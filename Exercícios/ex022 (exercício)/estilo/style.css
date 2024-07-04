@@ -49,7 +49,7 @@ section.normal {
 
 section.imagem { 
     background-color: rgb(51, 51, 51);  
-    color: red;
+    color: black;
 }
 
 section.imagem > p {
