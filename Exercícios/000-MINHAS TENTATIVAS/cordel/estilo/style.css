@@ -1,0 +1,39 @@
+@charset "UTF-8";
+* {
+    margin: 0px;
+    padding: 0px;
+    font-size: 1em;
+}
+
+header >h1 {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-size: 2em;
+    font-display: center;
+    color: black;
+    background-color: lightgray;
+    padding: 50px;
+    text-align: center;
+    font-weight: bolder
+}
+
+header > div {
+    background-color: brown;
+    border: 1px solid black;
+    border-radius: 10Px;
+}
+
+body {
+   background-color: lightgray; 
+}
+
+section {
+    height:200px;
+    padding-top: 100px;
+    padding-left: 50px;
+    background-color: blue;
+    font-size: 1.5em;
+}
+
+section.img02, section.img04 {
+    background-image: url(../imagens/background002.jpg);
+}
