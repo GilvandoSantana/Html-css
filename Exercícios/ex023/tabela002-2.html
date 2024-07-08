@@ -30,6 +30,18 @@
             background-color: gray;
             color: white;
         }
+
+        tbody > tr:nth-child(odd) { /* (:nth-child), COMANDO PARA DEIXAR ZEBRADO. ODD = IMPAR EM INGLÊS */
+            background-color: blue;
+        }
+
+        tbody > tr:nth-child(even) { /* (:nth-child), COMANDO PARA DEIXAR ZEBRADO. EVEN = PAR EM INGLÊS */
+            background-color: yellow;
+        }
+
+        td.num {
+            text-align: right;
+        }
     </style>
     
 </head>
@@ -47,31 +59,31 @@
             TR, TD, TH
     -->
     <table>
-        <caption>População das unidades federativas</caption>
+        <caption>População Das Unidades Federativas</caption>
         <thead>
             <tr>
-                <th>Estado</th>
-                <th>População</th>
+                <th scope="col">Estado</th>
+                <th scope="col" style="width: 50px;">População</th>
             </tr>
         </thead>
         <tbody>
                 <tr>
                     <td>São Paulo</td>
-                    <td>45.919,049</td>
+                    <td class="num">45.919,049</td>
                 </tr>
                 <tr>
                     <td>Minas Gerais</td>
-                    <td>21.166,791</td>
+                    <td class="num">21.166,791</td>
                 </tr>
                 <tr>
                     <td>Rio de Janeiro</td>
-                    <td>17.264,943</td>
+                    <td class="num">17.264,943</td>
                 </tr>
         </tbody>
         <tfoot>
             <tr>
-                <th>Total de habitantes</th>
-                <td><strong>84.350,783</strong></td>
+                <th scope="row">Total de habitantes</th>
+                <th scope="row"><strong>84.350,783</strong></th>
             </tr>
         </tfoot>
     </table>
