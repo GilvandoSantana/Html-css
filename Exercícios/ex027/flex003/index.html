@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flexble Box</title>
+    <style>
+        h1 {
+            margin-top: 20px;
+        }
+
+        div.container1 {
+            background-color: lightsalmon;
+            display: flex;
+            flex-flow: row nowrap;
+        }
+
+        div.item1 {
+            background-color: lightskyblue;
+            border: 1px solid black;
+            text-align: center;
+        }
+
+        div.container2 {
+            background-color: lightsalmon;
+
+            display: flex;
+            flex-flow: wrap;
+        }
+
+        div.item2 {
+            background-color: lightskyblue;
+            border: 1px solid black;
+            text-align: center;
+        }
+
+        div.container3 {
+            background-color: lightsalmon;
+            height: 100px;
+            display: flex;
+            flex-flow: column wrap-reverse;
+        }
+
+        div.item3 {
+            background-color: lightskyblue;
+            border: 1px solid black;
+            text-align: center;
+            flex: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Exemplo 1:</h1>
+    <div class="container1">
+        <div class="item1">Exemplo de bloco A</div>
+        <div class="item1">Exemplo de bloco B</div>
+        <div class="item1">Exemplo de bloco C</div>
+        <div class="item1">Exemplo de bloco D</div>
+        <div class="item1">Exemplo de bloco E</div>
+        <div class="item1">Exemplo de bloco F</div>
+        <div class="item1">Exemplo de bloco G</div>
+    </div>
+
+    <h1>Exemplo 2:</h1>
+    <div class="container2">
+        <div class="item2">Exemplo de bloco A</div>
+        <div class="item2">Exemplo de bloco B</div>
+        <div class="item2">Exemplo de bloco C</div>
+        <div class="item2">Exemplo de bloco D</div>
+        <div class="item2">Exemplo de bloco E</div>
+        <div class="item2">Exemplo de bloco F</div>
+        <div class="item2">Exemplo de bloco G</div>
+    </div>
+
+    <h1>Exemplo 3:</h1>
+    <div class="container3">
+        <div class="item3">Exemplo de bloco A</div>
+        <div class="item3">Exemplo de bloco B</div>
+        <div class="item3">Exemplo de bloco C</div>
+        <div class="item3">Exemplo de bloco D</div>
+        <div class="item3">Exemplo de bloco E</div>
+        <div class="item3">Exemplo de bloco F</div>
+        <div class="item3">Exemplo de bloco G</div>
+    </div>
+</body>
+</html>
