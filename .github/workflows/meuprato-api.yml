@@ -1,0 +1,21 @@
+name: Publicar Meu Prato API (Cloudflare)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["meu-prato-api/**"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: meu-prato-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publicar Worker
+        run: npx --yes wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
