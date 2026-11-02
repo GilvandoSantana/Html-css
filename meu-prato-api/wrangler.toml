@@ -11,4 +11,4 @@ PBKDF2_ITER = "100000"
 [[d1_databases]]
 binding = "DB"
 database_name = "meuprato-db"
-database_id = "COLE_AQUI_O_ID"
+database_id = "0f61e428-52f0-4688-bef1-3ee7b45ccd1d"
