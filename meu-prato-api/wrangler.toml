@@ -1,0 +1,14 @@
+# Meu Prato: API própria. Nada aqui é compartilhado com outros sistemas (GesCon etc.).
+name = "meuprato-api"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+[vars]
+ALLOWED_ORIGINS = "https://gilvandosantana.github.io"
+PBKDF2_ITER = "100000"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "meuprato-db"
+database_id = "COLE_AQUI_O_ID"
