@@ -1,0 +1,2045 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Meu Prato">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#FDF3F6">
+<link rel="apple-touch-icon" href="icon.png">
+<link rel="icon" href="icon.png">
+<title>Meu Prato</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Nunito:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: uma coluna para iPhone, abas flutuantes embaixo, folha deslizante para escolher alimentos.
+   Identidade: rosé e ameixa. Fundo blush, ameixa para ações, rosa vivo só nos números e no progresso. */
+:root{
+  --bg:#FDF3F6; --bg-glow:#FBE3EB; --surface:#FFFFFF; --surface2:#FCE9EF; --ink:#3A1F2B; --muted:#86616F; --line:#F3D9E2;
+  --rind:#8E2457; --on-rind:#FFFFFF; --flesh:#D63B67; --flesh-soft:#FDE4EB;
+  --p:#8C6BD8; --c:#F0A23A; --g:#3FB59B; --water:#5BB4E0; --warn:#B4530A;
+  --hero-a:#7A1F4B; --hero-b:#C23E73; --on-hero:#FFFFFF;
+  --shadow:0 10px 26px rgba(142,36,87,.10);
+  --display:'DM Serif Display','Playfair Display',Georgia,serif;
+  --body:'Nunito','Avenir Next',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1E121A; --bg-glow:#2E1623; --surface:#2A1823; --surface2:#38212F; --ink:#FCEAF1; --muted:#CBA5B6; --line:#4A2F3F;
+    --rind:#F48FB1; --on-rind:#2A1220; --flesh:#FF7FA2; --flesh-soft:#4A2231;
+    --p:#B7A0F2; --c:#F5BA5C; --g:#5FD0B6; --water:#7CC9F2; --warn:#FFAB66;
+    --hero-a:#5A1B3A; --hero-b:#8C2D5A; --shadow:0 10px 26px rgba(0,0,0,.4); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#1E121A; --bg-glow:#2E1623; --surface:#2A1823; --surface2:#38212F; --ink:#FCEAF1; --muted:#CBA5B6; --line:#4A2F3F;
+  --rind:#F48FB1; --on-rind:#2A1220; --flesh:#FF7FA2; --flesh-soft:#4A2231;
+  --p:#B7A0F2; --c:#F5BA5C; --g:#5FD0B6; --water:#7CC9F2; --warn:#FFAB66;
+  --hero-a:#5A1B3A; --hero-b:#8C2D5A; --shadow:0 10px 26px rgba(0,0,0,.4); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background-color:var(--bg);background-image:linear-gradient(180deg,var(--bg-glow) 0,var(--bg) 380px);background-repeat:no-repeat;
+  color:var(--ink);font:500 16px/1.5 var(--body);-webkit-text-size-adjust:100%;
+  padding-block:6px 128px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+body.lock{overflow:hidden}
+#app{max-width:560px;margin:0 auto;min-width:0}
+h1,h2,h3{font-family:var(--display);font-weight:400;margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:30px;color:var(--rind)}
+h2{font-size:22px}
+h3{font-size:18px}
+p{margin:0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;-webkit-tap-highlight-color:transparent}
+:focus-visible{outline:3px solid var(--flesh);outline-offset:2px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 16px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:36px;height:36px;flex:none}
+.tag{font-size:13px;color:var(--muted);font-weight:700;text-align:right}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.greet{font-size:34px;color:var(--rind);margin:2px 0 14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.center{text-align:center}
+
+/* cartões e formulários */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px;min-width:0}
+.card>h2{margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid2>*{min-width:0}
+.full{grid-column:1/-1}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:800;color:var(--muted)}
+label.f input,label.f select,.inp{width:100%;min-height:52px;padding:10px 16px;border:1.5px solid var(--line);border-radius:16px;background:var(--bg);color:var(--ink);font-size:16px;font-weight:700}
+label.f input:focus,label.f select:focus,.inp:focus{border-color:var(--flesh);outline:none;box-shadow:0 0 0 4px var(--flesh-soft)}
+label.f select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 22px) 23px,calc(100% - 16px) 23px;background-size:6px 6px;background-repeat:no-repeat;padding-right:40px}
+.hint{font-size:12px;color:var(--warn);font-weight:700}
+
+/* meta */
+.hero{position:relative;overflow:hidden;background:linear-gradient(135deg,var(--hero-a),var(--hero-b));color:var(--on-hero);border-radius:26px;padding:22px 20px 20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.hero::after{content:"";position:absolute;right:-50px;top:-60px;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.24),rgba(255,255,255,0) 70%)}
+.hero>*{position:relative;z-index:1}
+.hero .eyebrow{color:inherit;opacity:.85}
+.hero .big{font-family:var(--display);font-weight:400;font-size:66px;line-height:1;margin:8px 0 6px;font-variant-numeric:tabular-nums}
+.hero .big span{font-family:var(--body);font-size:20px;font-weight:700;margin-left:8px;opacity:.9}
+.hero .sub{font-size:14px;opacity:.92}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:18px 0 12px;background:rgba(255,255,255,.2);gap:2px}
+.split i{display:block;height:100%}
+.legend{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.legend div{display:flex;flex-direction:column;font-size:12px;font-weight:700}
+.legend b{font-family:var(--display);font-weight:400;font-size:24px;font-variant-numeric:tabular-nums}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.list li{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.list li:first-child{border-top:0}
+.list li b{font-variant-numeric:tabular-nums;white-space:nowrap;font-weight:800}
+.tips{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+
+/* indicadores */
+.gauge{position:relative;max-width:270px;margin:0 auto}
+.gauge svg{display:block;width:100%;height:auto}
+.gauge .mid{position:absolute;left:0;right:0;bottom:2px;text-align:center}
+.gauge .mid b{font-family:var(--display);font-weight:400;font-size:44px;color:var(--flesh);font-variant-numeric:tabular-nums;line-height:1}
+.gauge .mid div{font-size:13px;color:var(--muted);font-weight:700}
+.bars{display:flex;flex-direction:column;gap:12px;margin-top:18px}
+.bar{display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:10px;font-size:13px;font-weight:700}
+.bar .tr{height:10px;border-radius:5px;background:var(--surface2);overflow:hidden}
+.bar .tr i{display:block;height:100%;border-radius:5px}
+.bar span:last-child{font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.notice{background:var(--flesh-soft);border-radius:18px;padding:14px;margin-top:16px;font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:12px}
+
+/* cardápio e diário */
+.meal-h{display:flex;gap:10px;align-items:center}
+.meal-name{flex:1;min-width:0;border:0;background:transparent;font-family:var(--display);font-weight:400;font-size:23px;padding:4px 0;border-bottom:1.5px dashed transparent}
+.meal-name:focus{border-bottom-color:var(--flesh);outline:none}
+.meal-time{border:1.5px solid var(--line);background:var(--bg);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700;min-height:38px}
+.done{font-size:12px;font-weight:800;color:var(--rind);background:var(--flesh-soft);padding:4px 12px;border-radius:999px}
+.meal-sum{font-size:13px;color:var(--muted);margin:4px 0 6px;font-weight:600;font-variant-numeric:tabular-nums}
+.meal-sum b{color:var(--ink)}
+.items{list-style:none;margin:0;padding:0}
+.it{display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:14px 0;border-top:1px solid var(--line);align-items:center}
+.it-name{font-weight:800;min-width:0;overflow-wrap:anywhere}
+.it-k{font-family:var(--display);font-weight:400;font-size:22px;text-align:right;font-variant-numeric:tabular-nums}
+.it-k small{font-family:var(--body);font-weight:700;font-size:12px;color:var(--muted);margin-left:3px}
+.it-ctl{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+.it-ctl input{width:84px;min-height:44px;padding:6px 12px;text-align:right;border:1.5px solid var(--line);border-radius:14px;background:var(--bg);font-size:16px;font-weight:800}
+.it-ctl input:focus{border-color:var(--flesh);outline:none;box-shadow:0 0 0 3px var(--flesh-soft)}
+.it-ctl .u{font-size:13px;color:var(--muted);font-weight:600}
+.it-btns{display:flex;gap:8px}
+.ib{width:44px;height:44px;display:grid;place-items:center;border:1.5px solid var(--line);background:var(--surface);border-radius:50%;color:var(--rind)}
+.ib svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ib.big{width:56px;height:56px;font-size:30px;font-weight:700;line-height:1;background:var(--flesh-soft);border-color:transparent}
+.meal-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.ckrow{display:flex;gap:14px;align-items:center;width:100%;min-height:60px;padding:10px 12px;margin:3px 0;background:none;border:0;border-radius:18px;text-align:left}
+.ckrow[aria-pressed="true"]{background:var(--flesh-soft)}
+.box{flex:none;width:30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;color:var(--on-rind);background:var(--surface)}
+.box svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;opacity:0}
+.ckrow[aria-pressed="true"] .box{background:var(--rind);border-color:var(--rind)}
+.ckrow[aria-pressed="true"] .box svg{opacity:1}
+.ckrow[aria-pressed="true"] .ck-n{color:var(--muted)}
+.ck-n{flex:1;min-width:0;font-weight:800;overflow-wrap:anywhere}
+.ck-n small{display:block;font-weight:600;color:var(--muted);font-size:12px}
+.ck-k{font-family:var(--display);font-weight:400;font-size:20px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.water,.sweets{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.wv{flex:1;text-align:center}
+.wv b{font-family:var(--display);font-weight:400;font-size:38px;color:var(--flesh);font-variant-numeric:tabular-nums}
+.cups{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+.cup{height:48px;border-radius:8px 8px 18px 18px;border:2px solid var(--line);background:var(--surface)}
+.cup.on{background:var(--water);border-color:var(--water)}
+.dots{display:flex;gap:12px;justify-content:center;margin:8px 0}
+.dots i{display:block;width:28px;height:28px;border-radius:50%;border:2px solid var(--line)}
+.dots i.on{background:var(--flesh);border-color:var(--flesh)}
+
+/* botões */
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:12px 22px;border-radius:999px;border:1.5px solid var(--rind);background:var(--rind);color:var(--on-rind);font-family:var(--body);font-weight:800;font-size:16px;box-shadow:0 8px 18px rgba(142,36,87,.20)}
+.btn.block{display:flex;width:100%}
+.btn.ghost{background:transparent;color:var(--rind);box-shadow:none}
+.btn[disabled]{opacity:.5}
+.btn svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;margin-right:8px}
+.link{background:none;border:0;padding:10px 4px;font-size:14px;font-weight:800;color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.link.danger{color:var(--flesh)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 12px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:42px;padding:8px 18px;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);font-size:14px;font-weight:800;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--rind);color:var(--on-rind);border-color:var(--rind)}
+.chip[data-today="true"]::after{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--flesh);margin-left:6px;vertical-align:middle}
+
+/* lista de alimentos e cálculo */
+.flist{display:flex;flex-direction:column;max-height:340px;overflow-y:auto;border-top:1px solid var(--line)}
+.sheet .flist{max-height:none;border-top:0}
+.fo{display:flex;justify-content:space-between;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:12px 4px;min-height:56px}
+.fo[aria-current="true"]{background:var(--flesh-soft);border-radius:14px}
+.fo .n{font-weight:800;overflow-wrap:anywhere}
+.fo .d{font-size:12px;color:var(--muted);font-weight:600}
+.fo .k{font-variant-numeric:tabular-nums;font-size:13px;color:var(--muted);white-space:nowrap;text-align:right;font-weight:700}
+.mine{font-size:11px;font-weight:800;color:var(--flesh);margin-left:6px;letter-spacing:.05em}
+.res{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
+.res div{display:flex;flex-direction:column;gap:2px;padding:12px 8px;background:var(--surface2);border-radius:16px;min-width:0}
+.res b{font-family:var(--display);font-weight:400;font-size:26px;font-variant-numeric:tabular-nums}
+.res div:first-child b{color:var(--flesh)}
+.res span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.qrow{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.navcard{display:flex;justify-content:space-between;align-items:center;gap:12px;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:18px;margin-bottom:14px;min-height:76px;font-size:26px;color:var(--rind)}
+.navcard b{font-family:var(--display);font-weight:400;font-size:21px;display:block;color:var(--ink)}
+.navcard span span{display:block;font-size:14px;color:var(--muted);font-weight:600;font-family:var(--body)}
+.chart{width:100%;height:auto;display:block;margin:6px 0}
+.rec{border-top:1px solid var(--line)}
+.rec summary{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:14px 2px;list-style:none;min-height:60px;cursor:pointer}
+.rec summary::-webkit-details-marker{display:none}
+.shop-h{margin:20px 0 4px;color:var(--rind)}
+.hist{display:grid;grid-template-columns:1fr auto auto auto;gap:6px 14px;align-items:center;font-variant-numeric:tabular-nums;font-weight:700}
+.hist>*{padding:10px 0;border-top:1px solid var(--line)}
+
+/* abas flutuantes */
+.tabs{position:fixed;left:max(12px,env(safe-area-inset-left,0px));right:max(12px,env(safe-area-inset-right,0px));bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:20;background:var(--surface);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);padding:6px}
+.tabs-in{max-width:520px;margin:0 auto;display:flex;gap:2px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 2px 7px;border:0;border-radius:22px;background:none;color:var(--muted);font-size:11px;font-weight:800}
+.tab svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{background:var(--flesh-soft);color:var(--rind)}
+
+/* folhas e avisos */
+.sheet{position:fixed;inset:0;z-index:40;display:flex;flex-direction:column;justify-content:flex-end}
+.sheet[hidden]{display:none}
+.scrim{position:absolute;inset:0;background:rgba(40,12,26,.55)}
+.panel{position:relative;background:var(--surface);border-radius:28px 28px 0 0;max-height:90vh;max-height:90dvh;display:flex;flex-direction:column;
+  padding:18px max(18px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));
+  width:100%;max-width:560px;margin:0 auto}
+.panel-h{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.panel-body{overflow-y:auto;min-height:0;flex:1}
+.toast{position:fixed;left:0;right:0;z-index:50;bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;justify-content:center;
+  padding:0 max(16px,env(safe-area-inset-left,0px));pointer-events:none}
+.toast[hidden]{display:none}
+.toast div{pointer-events:auto;background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:999px;display:flex;gap:14px;align-items:center;font-size:14px;font-weight:700;max-width:560px}
+.toast button{background:none;border:0;color:inherit;font-weight:800;text-decoration:underline;padding:4px}
+
+/* foto da refeição */
+.photo-card,.photo-note{display:none}
+body .photo-btn{display:none!important}
+.photo-yes .photo-card,.photo-no .photo-card{display:block}
+.photo-yes .photo-btn{display:flex!important}
+.photo-no .photo-note{display:block}
+.thumb{width:100%;max-height:200px;object-fit:cover;border-radius:18px;display:block;margin-bottom:14px}
+.spin{width:32px;height:32px;border:3px solid var(--line);border-top-color:var(--flesh);border-radius:50%;margin:16px auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:no-preference){
+  .spin{animation:sp 1s linear infinite}
+  .bar .tr i,.split i{transition:width .4s ease}
+  .gauge path.fill{transition:stroke-dasharray .5s ease}
+  .btn,.ckrow,.cup{transition:transform .12s ease,background-color .2s ease}
+  .btn:active,.cup:active{transform:scale(.97)}
+}
+@media (max-width:380px){.hero .big{font-size:56px}.res{grid-template-columns:repeat(2,1fr)}.greet{font-size:30px}}
+
+/* novidades */
+.warnc{border:2px solid var(--warn)}
+.est-card{display:none}
+.photo-yes .est-card{display:block}
+.nextc{border:2px solid var(--flesh-soft)}
+.nx-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-top:4px}
+.nx-t{font-weight:800;color:var(--rind)}
+.wdots{display:flex;gap:10px;justify-content:center;margin:10px 0}
+.wd{display:flex;flex-direction:column;align-items:center;gap:4px}
+.wd i{display:block;width:28px;height:28px;border-radius:50%;border:2px solid var(--line)}
+.wd i.on{background:var(--flesh);border-color:var(--flesh)}
+.wd small{font-size:11px;color:var(--muted);font-weight:700}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.opt>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.opt .btn{flex:none}
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 10px;font-weight:700}
+.weeknav .ib[disabled]{opacity:.35}
+.txt{width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+</style>
+</head><body>
+
+<div id="app">
+  <header class="top">
+    <div class="brand"><svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><g fill="var(--flesh)" opacity=".92"><ellipse cx="16" cy="8.5" rx="4.6" ry="7"/><ellipse cx="16" cy="8.5" rx="4.6" ry="7" transform="rotate(72 16 16)"/><ellipse cx="16" cy="8.5" rx="4.6" ry="7" transform="rotate(144 16 16)"/><ellipse cx="16" cy="8.5" rx="4.6" ry="7" transform="rotate(216 16 16)"/><ellipse cx="16" cy="8.5" rx="4.6" ry="7" transform="rotate(288 16 16)"/></g><circle cx="16" cy="16" r="3.6" fill="var(--rind)"/></svg><h1>Meu Prato</h1></div>
+    <span class="tag" id="tag">Calorias e cardápio</span>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Seções">
+  <div class="tabs-in">
+    <button class="tab" data-tab="hoje"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.5"/></svg>Hoje</button>
+    <button class="tab" data-tab="cardapio"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 9h8M8 12h8M8 15h5"/></svg>Cardápio</button>
+    <button class="tab" data-tab="calcular"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg>Calcular</button>
+    <button class="tab" data-tab="progresso"><svg viewBox="0 0 24 24"><path d="M4 17l5-6 4 3 7-8"/><path d="M4 21h16"/></svg>Progresso</button>
+    <button class="tab" data-tab="mais"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6" fill="currentColor"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><circle cx="19" cy="12" r="1.6" fill="currentColor"/></svg>Mais</button>
+  </div>
+</nav>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="scrim" data-act="closesheet"></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="panel-h">
+      <h2 id="sheet-title">Escolher alimento</h2>
+      <button class="ib" data-act="closesheet" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <p class="small muted" id="sheet-note" hidden></p>
+    <input class="inp" id="sq" type="search" placeholder="Buscar alimento" autocomplete="off" aria-label="Buscar alimento">
+    <div class="chips" id="sheet-chips" style="margin-top:10px"></div>
+    <div class="panel-body"><div class="flist" id="sheet-list"></div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden><div><span id="toast-msg"></span><button id="toast-act" hidden></button></div></div>
+
+<div class="sheet" id="psheet" hidden>
+  <div class="scrim" data-act="pclose"></div>
+  <div class="panel" role="dialog" aria-modal="true" aria-labelledby="ptitle">
+    <div class="panel-h">
+      <h2 id="ptitle">Foto da refeição</h2>
+      <button class="ib" data-act="pclose" aria-label="Fechar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="panel-body" id="pbody"></div>
+  </div>
+</div>
+<input type="file" id="photoIn" accept="image/*" hidden>
+
+<script>
+'use strict';
+/* ---------- utilidades ---------- */
+const $=(s,r=document)=>r.querySelector(s);
+const fmt=(n,d=0)=>Number(n).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const norm=s=>String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const x=parseFloat(String(v).replace(',','.'));return isFinite(x)?x:NaN};
+const dv=n=>String(n).replace('.',',');
+const uid=()=>Math.random().toString(36).slice(2,9);
+const SA=!(window.claude&&window.claude.use);
+const KEY='meuprato.v1';
+
+/* ---------- banco de alimentos (valores por 100 g, aproximados, base TACO/USDA) ---------- */
+/* [id, nome, categoria, kcal, proteína, carboidrato, gordura, unidade?] unidade = [singular, plural, gramas, arredondar em unidades inteiras] */
+const CATS={prot:'Proteínas',lac:'Laticínios',carb:'Carboidratos',fruta:'Frutas',veg:'Legumes e verduras',gord:'Gorduras',doce:'Doces e extras',fora:'Comer fora',meu:'Meus'};
+const RAW=[
+['ovo','Ovo cozido','prot',146,13.3,0.6,9.5,['ovo','ovos',50,1]],
+['clara','Clara de ovo','prot',52,10.9,0.7,0.2],
+['frango','Peito de frango grelhado','prot',159,32,0,2.5],
+['patinho','Carne bovina magra (patinho) grelhada','prot',219,35.9,0,7.3],
+['tilapia','Tilápia grelhada','prot',128,26,0,2.7],
+['bisteca','Bisteca de porco grelhada','prot',250,27,0,15],
+['lombo','Lombo de porco assado','prot',210,29,0,10],
+['carnemoida','Carne moída refogada','prot',212,26,0,11],
+['costela','Costela bovina assada','prot',330,25,0,25],
+['linguica','Linguiça de porco grelhada','prot',296,16,1.5,25],
+['bacon','Bacon frito','prot',541,37,1.4,42],
+['frangocoxa','Coxa de frango sem pele assada','prot',185,26,0,8.5],
+['sardinha','Sardinha em lata (no óleo, escorrida)','prot',208,24.6,0,11.5],
+['atum','Atum em água (escorrido)','prot',116,26,0,1],
+['peru','Peito de peru fatiado','prot',104,17,2,2.5,['fatia','fatias',15]],
+['whey','Whey protein (pó)','prot',400,80,8,6,['scoop','scoops',30]],
+['cottage','Queijo cottage','lac',98,11,3.4,4.3],
+['minas','Queijo minas frescal','lac',264,17.4,3.2,20.2,['fatia','fatias',30]],
+['mucarela','Queijo muçarela','lac',330,22.6,3,25.2,['fatia','fatias',20]],
+['ricota','Ricota','lac',140,12.6,3.8,8.1],
+['iogn','Iogurte natural integral','lac',61,3.5,4.7,3.3,['pote','potes',170]],
+['iogg','Iogurte grego natural','lac',97,9,4,5,['pote','potes',100]],
+['leited','Leite desnatado','lac',35,3.4,4.9,0.1,['copo','copos',200]],
+['leitei','Leite integral','lac',61,3.2,4.6,3.3,['copo','copos',200]],
+['arroz','Arroz branco cozido','carb',128,2.5,28.1,0.2,['colher de sopa','colheres de sopa',25]],
+['arrozi','Arroz integral cozido','carb',124,2.6,25.8,1,['colher de sopa','colheres de sopa',25]],
+['feijao','Feijão carioca cozido','carb',76,4.8,13.6,0.5,['concha','conchas',90]],
+['batdoce','Batata-doce cozida','carb',77,0.6,18.4,0.1],
+['bating','Batata inglesa cozida','carb',52,1.2,11.9,0],
+['macaxeira','Macaxeira (mandioca) cozida','carb',125,0.6,30.1,0.3],
+['inhame','Inhame cozido','carb',97,2.1,23,0.2],
+['macarrao','Macarrão cozido','carb',102,3.4,19.9,0.5],
+['cuscuz','Cuscuz de milho cozido','carb',113,2.2,25.3,0.7,['fatia','fatias',100]],
+['tapioca','Tapioca (goma hidratada)','carb',240,0,59,0,['tapioca média','tapiocas médias',50]],
+['paoint','Pão integral','carb',253,9.4,49.9,3.4,['fatia','fatias',25,1]],
+['paofr','Pão francês','carb',300,8,58.6,3.1,['pão','pães',50,1]],
+['aveia','Aveia em flocos','carb',394,13.9,66.6,8.5,['colher de sopa','colheres de sopa',15]],
+['banana','Banana prata','fruta',98,1.3,26,0.1,['banana','bananas',80]],
+['maca','Maçã','fruta',56,0.3,15.2,0,['maçã','maçãs',130]],
+['mamao','Mamão papaia','fruta',40,0.5,10.4,0.1],
+['laranja','Laranja','fruta',37,1,8.9,0.1,['laranja','laranjas',150]],
+['morango','Morango','fruta',30,0.9,6.8,0.3],
+['melancia','Melancia','fruta',33,0.9,8.1,0],
+['abacaxi','Abacaxi','fruta',48,0.9,12.3,0.1],
+['manga','Manga','fruta',64,0.4,16.7,0.3],
+['uva','Uva','fruta',53,0.7,13.6,0.2],
+['abacate','Abacate','fruta',96,1.2,6,8.4,['colher de sopa','colheres de sopa',30]],
+['alface','Alface','veg',11,1.3,1.7,0.2],
+['tomate','Tomate','veg',15,1.1,3.1,0.2],
+['cenoura','Cenoura crua','veg',34,1.3,7.7,0.2],
+['brocolis','Brócolis cozido','veg',25,2.1,4.4,0.5],
+['abobrinha','Abobrinha cozida','veg',15,1.1,3,0.2],
+['couve','Couve refogada','veg',90,1.7,8.7,6.6],
+['pepino','Pepino','veg',10,0.9,2,0.1],
+['chuchu','Chuchu cozido','veg',19,0.4,4.8,0],
+['azeite','Azeite de oliva','gord',884,0,0,100,['colher de sopa','colheres de sopa',13]],
+['pasta','Pasta de amendoim integral','gord',590,25,20,50,['colher de sobremesa','colheres de sobremesa',15]],
+['castanha','Castanha-do-pará','gord',643,14.5,15.1,63.5,['castanha','castanhas',5]],
+['amendoim','Amendoim torrado','gord',567,25.8,16.1,49.2],
+['amendoa','Amêndoas','gord',579,21,22,50],
+['chia','Chia','gord',486,16.5,42,31,['colher de sopa','colheres de sopa',12]],
+['manteiga','Manteiga','gord',726,0.4,0.1,82,['colher de chá','colheres de chá',5]],
+['choco70','Chocolate 70% cacau','doce',580,8,46,42,['quadradinho','quadradinhos',10]],
+['chocoleite','Chocolate ao leite','doce',540,7,59,30,['quadradinho','quadradinhos',10]],
+['brigadeiro','Brigadeiro','doce',360,4,58,12,['brigadeiro','brigadeiros',25]],
+['sorvete','Sorvete de creme','doce',207,3.5,24,11,['bola','bolas',60]],
+['bolo','Bolo simples','doce',313,5.4,52,9.9,['fatia','fatias',60]],
+['biscoito','Biscoito recheado','doce',471,6,70,19,['biscoito','biscoitos',12]],
+['mel','Mel','doce',309,0.4,84,0,['colher de sopa','colheres de sopa',20]],
+['cacau','Cacau em pó (sem açúcar)','doce',228,20,58,14,['colher de sopa','colheres de sopa',8]],
+['refri','Refrigerante comum','doce',42,0,10.6,0,['lata','latas',350]],
+['f_acai','Açaí na tigela (com granola e leite em pó)','fora',180,2.5,28,7,['tigela média','tigelas médias',300,true]],
+['f_pizza','Pizza (fatia média)','fora',270,11,33,10,['fatia','fatias',110,true]],
+['f_coxinha','Coxinha','fora',275,8,29,14,['coxinha','coxinhas',90,true]],
+['f_pastel','Pastel frito','fora',320,8,33,17,['pastel','pastéis',100,true]],
+['f_esfiha','Esfiha de carne','fora',260,10,33,10,['esfiha','esfihas',80,true]],
+['f_hamb','Hambúrguer com queijo','fora',250,13,25,11,['lanche','lanches',220,true]],
+['f_batfrita','Batata frita (porção)','fora',310,4,38,16,['porção pequena','porções pequenas',100]],
+['f_pf','Prato feito (arroz, feijão, carne e salada)','fora',150,7,18,5,['prato','pratos',450,true]],
+['f_sushi','Sushi e sashimi (combinado)','fora',145,6,28,1,['peça','peças',30,true]],
+['f_lasanha','Lasanha','fora',160,9,13,8,['porção','porções',250,true]],
+['f_paoqueijo','Pão de queijo','fora',330,6,40,16,['unidade','unidades',40,true]],
+['f_milk','Milkshake','fora',140,3,22,4,['copo','copos',400,true]],
+['f_cerveja','Cerveja','fora',43,0.3,3.6,0,['lata','latas',350,true]],
+['f_salgado','Salgado assado','fora',300,9,32,15,['salgado','salgados',80,true]],
+['ovofrito','Ovo frito','prot',240,15.6,1.2,18.6,['ovo','ovos',50,true]],
+['ovomex','Ovo mexido','prot',190,12.5,1.5,14.5,['ovo','ovos',60,true]],
+['ovocru','Ovo inteiro (cru)','prot',143,13,1.6,9.5,['ovo','ovos',50,true]],
+['omeletesimples','Omelete simples','prot',154,11,0.6,12,['omelete','omeletes',80,true]],
+['frangocoxafrito','Frango frito (empanado)','prot',260,19,9,16,['pedaço','pedaços',100,true]],
+['frangosobrecoxa','Sobrecoxa de frango sem pele assada','prot',215,24,0,13],
+['frangodesf','Frango desfiado cozido','prot',165,31,0,3.6],
+['frangoasa','Asa de frango assada','prot',290,27,0,20,['asa','asas',50,true]],
+['frangoempanado','Filé de frango empanado (nuggets)','prot',270,14,17,16,['unidade','unidades',20,true]],
+['peruassado','Peru assado','prot',165,29,0,4.5],
+['alcatra','Alcatra grelhada','prot',241,31,0,12.5],
+['contrafile','Contrafilé grelhado','prot',278,30,0,17],
+['fileminhom','Filé mignon grelhado','prot',220,32,0,9.5],
+['acem','Acém cozido','prot',215,27,0,11],
+['musculo','Músculo bovino cozido','prot',194,31,0,7],
+['coxaomole','Coxão mole cozido','prot',219,32,0,9],
+['cupim','Cupim assado','prot',330,26,0,25],
+['picanha','Picanha grelhada','prot',289,29,0,19],
+['fraldinha','Fraldinha grelhada','prot',260,29,0,15],
+['carneseca','Carne seca cozida','prot',250,37,0,10],
+['carnesol','Carne de sol cozida','prot',245,32,0,12],
+['hamburguercaseiro','Hambúrguer de carne (grelhado)','prot',260,22,1,18,['hambúrguer','hambúrgueres',90,true]],
+['almondega','Almôndega de carne','prot',215,15,8,13,['almôndega','almôndegas',30,true]],
+['figado','Fígado bovino grelhado','prot',225,29,4.2,9],
+['panelada','Dobradinha (bucho)','prot',130,17,0,6.5],
+['porcopernil','Pernil de porco assado','prot',262,27,0,17],
+['porcocostela','Costelinha de porco assada','prot',345,24,0,27],
+['porcolinguicaf','Linguiça toscana grelhada','prot',285,16,1,24],
+['salsicha','Salsicha cozida','prot',265,12,3,23,['salsicha','salsichas',50,true]],
+['presunto','Presunto fatiado','prot',94,14,1.5,3.5,['fatia','fatias',15]],
+['mortadela','Mortadela','prot',269,12,3,23,['fatia','fatias',20]],
+['salame','Salame','prot',425,22,1.5,37,['fatia','fatias',10]],
+['calabresa','Linguiça calabresa frita','prot',320,17,2,27],
+['peitoperu','Blanquet de peru','prot',83,14,2,2,['fatia','fatias',15]],
+['tilapiafrita','Tilápia frita','prot',230,24,5,12],
+['salmao','Salmão grelhado','prot',229,23,0,15],
+['sardinhaassada','Sardinha assada','prot',164,24,0,7],
+['atumoleo','Atum em óleo (escorrido)','prot',190,26,0,9],
+['atumfresco','Atum fresco grelhado','prot',184,30,0,6],
+['merluza','Merluza cozida','prot',95,20,0,1.5],
+['pescada','Pescada branca cozida','prot',110,22,0,2],
+['bacalhau','Bacalhau cozido','prot',136,29,0,2],
+['camarao','Camarão cozido','prot',99,21,0.2,1.1],
+['lula','Lula cozida','prot',130,24,3,2],
+['mexilhao','Mexilhão cozido','prot',86,12,3.7,2.2],
+['carangueijo','Siri/caranguejo cozido','prot',87,18,0,1.1],
+['surubim','Surubim grelhado','prot',130,23,0,4],
+['tambaqui','Tambaqui grelhado','prot',245,23,0,16],
+['ovocodorna','Ovo de codorna cozido','prot',158,13,0.4,11,['ovo','ovos',10,true]],
+['tofu','Tofu','prot',76,8,1.9,4.8],
+['soja','Soja cozida','prot',141,12.5,7.5,6.4],
+['lentilha','Lentilha cozida','carb',93,6.3,16.3,0.5],
+['grao','Grão-de-bico cozido','carb',130,8.2,21.2,2.2],
+['ervilha','Ervilha cozida','carb',72,5,12.3,0.4],
+['feijaopreto','Feijão preto cozido','carb',77,4.5,14,0.5],
+['feijaofradinho','Feijão-fradinho cozido','carb',120,8,20,0.7],
+['feijaoverde','Feijão verde cozido','carb',85,5,15,0.5],
+['feijaobranco','Feijão branco cozido','carb',105,7,18,0.4],
+['feijaotropeiro','Feijão tropeiro','carb',185,8,17,10],
+['baiao','Baião de dois','carb',165,7,23,5],
+['farofa','Farofa pronta','carb',406,2,80,9,['colher de sopa','colheres de sopa',15]],
+['farofaovo','Farofa de ovo caseira','carb',250,5,30,12],
+['farinha','Farinha de mandioca','carb',361,1.6,87,0.3,['colher de sopa','colheres de sopa',12]],
+['farinhamilho','Flocão de milho (cuscuz cru)','carb',358,7,79,1.5],
+['cuscuzovo','Cuscuz com ovo','carb',160,6,25,4],
+['cuscuznord','Cuscuz nordestino com manteiga','carb',170,3,28,5],
+['milho','Milho verde cozido','carb',96,3.2,21,1.5,['espiga','espigas',100,true]],
+['pipoca','Pipoca sem óleo','carb',387,13,78,4.5,['xícara','xícaras',8]],
+['pipocaoleo','Pipoca com óleo','carb',500,9,58,27],
+['polenta','Polenta cozida','carb',70,1.5,15,0.4],
+['angu','Angu de milho','carb',60,1.3,13,0.3],
+['canjica','Canjica doce','carb',180,3,35,3],
+['mingau','Mingau de aveia (com leite)','carb',90,3.5,13,2.5],
+['arrozparbo','Arroz parboilizado cozido','carb',123,2.6,26.5,0.3],
+['arrozfrito','Arroz com ovo e legumes','carb',165,4,27,4],
+['arrozbrocolis','Arroz com brócolis','carb',130,3,25,2],
+['arrozcarreteiro','Arroz carreteiro','carb',190,9,22,7],
+['risoto','Risoto de frango','carb',160,7,22,5],
+['quinoa','Quinoa cozida','carb',120,4.4,21.3,1.9],
+['macarraointegral','Macarrão integral cozido','carb',124,5.3,26.5,0.5],
+['macarraoalho','Macarrão ao alho e óleo','carb',175,4.5,25,6],
+['macarraobol','Macarrão à bolonhesa','carb',140,7,18,4.5],
+['molhotomate','Molho de tomate','veg',35,1.2,6.5,0.7,['colher de sopa','colheres de sopa',25]],
+['nhoque','Nhoque de batata cozido','carb',150,4,30,1.5],
+['cuscuzmarroq','Cuscuz marroquino cozido','carb',112,3.8,23,0.2],
+['lasanhamassa','Massa de lasanha cozida','carb',140,5,27,1],
+['panqueca','Panqueca simples','carb',190,6,26,7,['unidade','unidades',60,true]],
+['crepioca','Crepioca','carb',170,8,18,7,['unidade','unidades',90,true]],
+['tapiocacoco','Tapioca com coco','carb',240,1,50,5,['unidade','unidades',60,true]],
+['tapiocaqueijo','Tapioca com queijo','carb',230,8,38,5,['unidade','unidades',100,true]],
+['beiju','Beiju','carb',240,0.5,58,0.2],
+['batatafrita','Batata frita caseira','carb',290,3.5,38,14],
+['batatacozida','Batata cozida com casca','carb',80,2,18,0.1,['unidade','unidades',150,true]],
+['batatapure','Purê de batata','carb',88,1.8,14,3],
+['batatasaute','Batata sauté','carb',105,2,16,3.5],
+['mandioquinha','Mandioquinha cozida','carb',80,0.9,18.9,0.2],
+['cara','Cará cozido','carb',118,2.3,27.8,0.1],
+['mandiocafrita','Mandioca frita','carb',290,1.5,40,14],
+['bananaterra','Banana-da-terra cozida','carb',120,1,31,0.2],
+['bananafrita','Banana frita','carb',220,1.5,35,9],
+['abobora','Abóbora cozida','veg',29,0.8,6.1,0.2],
+['purefarinha','Pirão','carb',85,2,17,0.7],
+['caldofeijao','Caldo de feijão','carb',60,3,9,1],
+['caldoverde','Caldo verde','carb',75,3,9,3],
+['sopa','Sopa de legumes','veg',45,2,7,1],
+['paofrances2','Pão de forma branco','carb',253,8,49,3,['fatia','fatias',25,true]],
+['paoforma','Pão de forma integral','carb',253,9.4,49.9,3.7,['fatia','fatias',25,true]],
+['paosirio','Pão sírio','carb',275,9,55,1.2,['unidade','unidades',50,true]],
+['paoquei','Pão de queijo caseiro','carb',330,6,40,16,['unidade','unidades',40,true]],
+['paohamb','Pão de hambúrguer','carb',270,9,50,3.5,['unidade','unidades',60,true]],
+['paodoce','Pão doce','carb',320,8,56,7,['unidade','unidades',60,true]],
+['torrada','Torrada','carb',390,11,73,5,['unidade','unidades',8,true]],
+['bisnaga','Pão careca (massa fina)','carb',285,9,58,1.5],
+['cracker','Biscoito cream cracker','carb',432,10,68,13,['biscoito','biscoitos',6,true]],
+['biscoitoagua','Biscoito água e sal','carb',430,10,70,11,['biscoito','biscoitos',6,true]],
+['biscoitomaisena','Biscoito maisena','carb',443,8,75,12,['biscoito','biscoitos',6,true]],
+['biscoitointegral','Biscoito integral','carb',420,9,68,12],
+['barracereal','Barra de cereal','carb',390,5,70,10,['barra','barras',25,true]],
+['granola','Granola','carb',420,10,65,14,['colher de sopa','colheres de sopa',15]],
+['musli','Müsli','carb',365,9.5,66,6],
+['cereal','Cereal de milho (flocos)','carb',375,7,84,0.9,['xícara','xícaras',30]],
+['sucrilhos','Sucrilhos','carb',380,5,88,0.5],
+['farinhaaveia','Farelo de aveia','carb',246,17,66,7],
+['farelotrigo','Farelo de trigo','carb',216,15.6,64.5,4.3],
+['linhaca','Linhaça','gord',495,14.1,43.3,32.3,['colher de sopa','colheres de sopa',10]],
+['gergelim','Gergelim','gord',584,21,21,50,['colher de sopa','colheres de sopa',9]],
+['girassol','Semente de girassol','gord',584,21,20,51,['colher de sopa','colheres de sopa',10]],
+['abobrinhasem','Semente de abóbora','gord',559,30,11,49,['colher de sopa','colheres de sopa',10]],
+['nozes','Nozes','gord',654,15,14,65,['unidade','unidades',5,true]],
+['castanhacaju','Castanha-de-caju','gord',570,18,30,44,['unidade','unidades',3,true]],
+['pistache','Pistache','gord',560,20,28,45],
+['avela','Avelã','gord',628,15,17,61],
+['macadamia','Macadâmia','gord',718,8,14,76],
+['coco','Coco ralado (sem açúcar)','gord',600,6,24,57,['colher de sopa','colheres de sopa',8]],
+['cocoseco','Coco fresco','gord',406,3.7,10.4,42],
+['leitecoco','Leite de coco','gord',166,1.2,2.2,17],
+['oleo','Óleo de soja','gord',884,0,0,100,['colher de sopa','colheres de sopa',9]],
+['oleococo','Óleo de coco','gord',862,0,0,100,['colher de sopa','colheres de sopa',9]],
+['margarina','Margarina','gord',596,0.1,0.8,66,['colher de chá','colheres de chá',5]],
+['maionese','Maionese','gord',680,1,3,75,['colher de sopa','colheres de sopa',15]],
+['maionesefit','Maionese light','gord',265,0.5,10,25,['colher de sopa','colheres de sopa',15]],
+['requeijao','Requeijão cremoso','lac',257,9,2.5,23.5,['colher de sopa','colheres de sopa',30]],
+['requeijaolight','Requeijão light','lac',140,8,4,10,['colher de sopa','colheres de sopa',30]],
+['creamcheese','Cream cheese','lac',342,6,4,34,['colher de sopa','colheres de sopa',20]],
+['queijoprato','Queijo prato','lac',360,23,1.5,29,['fatia','fatias',15]],
+['queijocoalho','Queijo coalho','lac',320,22,2.5,25,['espeto','espetos',60,true]],
+['queijoparmesao','Queijo parmesão ralado','lac',453,36,2,33,['colher de sopa','colheres de sopa',10]],
+['queijominas','Queijo minas padrão','lac',320,22,3,24],
+['queijobranco','Queijo branco (tipo minas)','lac',264,17.4,3,20],
+['queijocheddar','Queijo cheddar','lac',403,25,1.3,33,['fatia','fatias',20]],
+['queijogorgonzola','Queijo gorgonzola','lac',353,21,2.3,29],
+['queijomanteiga','Queijo de manteiga','lac',360,22,2,29],
+['queijoricotalight','Ricota light','lac',100,12,3,4],
+['iogdes','Iogurte desnatado','lac',42,4.2,6,0.2,['pote','potes',170,true]],
+['iogfruta','Iogurte com polpa de frutas','lac',90,3,15,2,['pote','potes',170,true]],
+['iogproteico','Iogurte proteico','lac',65,10,5,0.7,['pote','potes',170,true]],
+['iogliquido','Iogurte líquido','lac',78,2.5,13,1.5,['garrafinha','garrafinhas',170,true]],
+['iogaromatizado','Iogurte grego com mel','lac',130,4,20,4],
+['kefir','Kefir','lac',60,3.5,4.5,3.3],
+['leiteemp','Leite em pó integral','lac',497,26,38,27,['colher de sopa','colheres de sopa',10]],
+['leitesemilac','Leite sem lactose desnatado','lac',35,3.4,5,0.1],
+['leitecondensado','Leite condensado','doce',321,7.8,55,8,['colher de sopa','colheres de sopa',20]],
+['doceleite','Doce de leite','doce',306,5.5,59,6,['colher de sopa','colheres de sopa',20]],
+['cremeleite','Creme de leite','lac',221,2.2,3.4,22,['colher de sopa','colheres de sopa',15]],
+['leitesoja','Leite de soja','lac',45,3,2.5,2.5],
+['leiteamendoa','Leite de amêndoas','lac',17,0.6,0.6,1.5],
+['leiteaveia','Bebida de aveia','lac',45,1,7,1.5],
+['leitecocoindus','Leite de coco (bebida)','lac',20,0.2,2,1.2],
+['coalhada','Coalhada','lac',60,4,5,3],
+['suplementocasein','Caseína (pó)','prot',370,78,6,3,['colher','colheres',30,true]],
+['albumina','Albumina (pó)','prot',370,80,5,1,['colher','colheres',30,true]],
+['hipercal','Hipercalórico (pó)','carb',380,10,75,3],
+['bcaa','Proteína vegetal (pó)','prot',370,75,8,5,['colher','colheres',30,true]],
+['barraprot','Barra de proteína','prot',370,30,35,12,['barra','barras',45,true]],
+['iogwhey','Iogurte grego com whey','lac',90,11,7,2],
+['laranjapera','Laranja-pera','fruta',42,1,10.4,0.1,['unidade','unidades',180,true]],
+['tangerina','Tangerina','fruta',38,0.8,9.6,0.1,['unidade','unidades',140,true]],
+['limao','Limão (suco)','fruta',22,0.4,7,0.1],
+['lima','Lima','fruta',32,0.6,11,0.2,['unidade','unidades',80,true]],
+['abacaxi2','Abacaxi pérola','fruta',48,0.9,12.3,0.1,['fatia','fatias',80,true]],
+['pera','Pera','fruta',53,0.6,14,0.1,['unidade','unidades',150,true]],
+['pessego','Pêssego','fruta',45,1,11,0.1,['unidade','unidades',120,true]],
+['ameixa','Ameixa','fruta',46,0.7,11.4,0.3,['unidade','unidades',60,true]],
+['ameixaseca','Ameixa seca','fruta',240,2.2,64,0.4,['unidade','unidades',8,true]],
+['damasco','Damasco seco','fruta',241,3.4,63,0.5,['unidade','unidades',8,true]],
+['uvapassa','Uva-passa','fruta',299,3.1,79,0.5,['colher de sopa','colheres de sopa',12]],
+['tamara','Tâmara','fruta',282,2.5,75,0.4,['unidade','unidades',8,true]],
+['figo','Figo','fruta',74,0.8,19,0.3,['unidade','unidades',50,true]],
+['kiwi','Kiwi','fruta',61,1.1,14.7,0.5,['unidade','unidades',75,true]],
+['melao','Melão','fruta',29,0.7,7.5,0,['fatia','fatias',200,true]],
+['goiaba','Goiaba vermelha','fruta',54,1.1,13,0.4,['unidade','unidades',150,true]],
+['caju','Caju','fruta',43,1,10.3,0.3,['unidade','unidades',60,true]],
+['acerola','Acerola','fruta',33,0.9,8,0.2],
+['cupuacu','Polpa de cupuaçu','fruta',49,1.2,10.4,0.5],
+['graviola','Graviola','fruta',62,1,15.8,0.2],
+['maracuja','Maracujá (polpa)','fruta',68,2,12.3,2.1,['unidade','unidades',50,true]],
+['pitaya','Pitaya','fruta',50,1.1,11,0.4],
+['jabuticaba','Jabuticaba','fruta',58,0.6,15.3,0.1],
+['lichia','Lichia','fruta',66,0.8,16.5,0.4],
+['mirtilo','Mirtilo','fruta',57,0.7,14.5,0.3],
+['framboesa','Framboesa','fruta',52,1.2,11.9,0.7],
+['amoracasa','Amora','fruta',43,1.4,9.6,0.5],
+['cereja','Cereja','fruta',63,1.1,16,0.2],
+['coco2','Água de coco','fruta',22,0.2,5.3,0],
+['caqui','Caqui','fruta',71,0.6,19,0.2,['unidade','unidades',150,true]],
+['carambola','Carambola','fruta',34,1,7.8,0.3],
+['nectarina','Nectarina','fruta',44,1.1,10.5,0.3],
+['roma','Romã','fruta',83,1.7,19,1.2],
+['jaca','Jaca','fruta',88,1.4,22,0.3],
+['polpaacai','Polpa de açaí (sem açúcar)','fruta',70,1,6,5],
+['acaibatido','Açaí batido com guaraná','fruta',110,1,20,3],
+['bananamaca','Banana-maçã','fruta',87,1.8,22,0.1,['unidade','unidades',80,true]],
+['bananaouro','Banana-nanica','fruta',92,1.4,23.8,0.1,['unidade','unidades',100,true]],
+['suco','Suco de laranja natural','fruta',45,0.7,10.4,0.2,['copo','copos',200,true]],
+['sucoindus','Suco de caixinha','fruta',45,0.1,11,0,['copo','copos',200,true]],
+['sucodetox','Suco verde (sem açúcar)','fruta',30,1,6,0.2,['copo','copos',300,true]],
+['vitamina','Vitamina de banana com leite','fruta',80,3,14,1.5,['copo','copos',300,true]],
+['cafe','Café sem açúcar','veg',2,0.1,0.3,0,['xícara','xícaras',50,true]],
+['cafeleite','Café com leite','lac',40,2,4,1.5,['xícara','xícaras',150,true]],
+['cafeacucar','Café com açúcar','doce',25,0.1,6,0,['xícara','xícaras',50,true]],
+['cha','Chá sem açúcar','veg',1,0,0.2,0,['xícara','xícaras',200,true]],
+['cappuccino','Cappuccino','doce',65,2,10,1.5,['xícara','xícaras',200,true]],
+['energetico','Energético','doce',45,0,11,0,['lata','latas',250,true]],
+['refrizero','Refrigerante zero','veg',1,0,0.2,0,['lata','latas',350,true]],
+['agua','Água de coco natural','fruta',20,0,5,0],
+['guarana','Guaraná natural','doce',40,0,10,0,['lata','latas',350,true]],
+['isotonico','Isotônico','doce',24,0,6,0,['garrafa','garrafas',500,true]],
+['vinho','Vinho tinto','fora',85,0.1,2.6,0,['taça','taças',150,true]],
+['cervejalatao','Cerveja lata grande','fora',43,0.3,3.6,0,['lata','latas',473,true]],
+['caipirinha','Caipirinha','fora',140,0,14,0,['copo','copos',200,true]],
+['destilado','Destilado (vodka, cachaça)','fora',230,0,0,0,['dose','doses',50,true]],
+['alface2','Alface americana','veg',14,0.9,3,0.1],
+['rucula','Rúcula','veg',25,2.6,3.7,0.7],
+['agriao','Agrião','veg',17,2.7,2.3,0.2],
+['espinafre','Espinafre cozido','veg',23,3,3.8,0.3],
+['couveflor','Couve-flor cozida','veg',23,1.9,4.5,0.2],
+['repolho','Repolho cru','veg',25,1.3,5.8,0.1],
+['repolhoroxo','Repolho roxo','veg',31,1.4,7,0.2],
+['beterraba','Beterraba cozida','veg',44,1.7,10,0.1],
+['beterrabacrua','Beterraba crua','veg',49,1.9,11,0.1],
+['cenourac','Cenoura cozida','veg',35,0.8,8.2,0.2],
+['abobrinha2','Abobrinha crua','veg',17,1.2,3.1,0.3],
+['berinjela','Berinjela cozida','veg',25,0.8,6,0.2],
+['pimentao','Pimentão cru','veg',28,1,6,0.3],
+['pimentaoverm','Pimentão vermelho','veg',31,1,6,0.3],
+['cebola','Cebola','veg',40,1.1,9.3,0.1],
+['alho','Alho','veg',149,6.4,33,0.5,['dente','dentes',4,true]],
+['quiabo','Quiabo cozido','veg',30,1.9,6.4,0.3],
+['jilo','Jiló cozido','veg',27,1.4,6,0.2],
+['maxixe','Maxixe','veg',14,1.4,2.7,0.1],
+['vagem','Vagem cozida','veg',25,1.5,5.5,0.2],
+['palmito','Palmito em conserva','veg',23,2.5,4.3,0.5],
+['aspargo','Aspargo cozido','veg',22,2.4,4.1,0.2],
+['cogumelo','Cogumelo cozido','veg',28,2.7,4.7,0.4],
+['champignon','Champignon em conserva','veg',27,2.7,4.3,0.5],
+['couvemanteiga','Couve crua','veg',27,2.9,4.3,0.5],
+['acelga','Acelga cozida','veg',20,1.8,3.7,0.2],
+['almeirao','Almeirão','veg',18,1.8,3.3,0.1],
+['chicoria','Chicória','veg',20,1.8,4,0.2],
+['rabanete','Rabanete','veg',14,1,3,0.1],
+['nabo','Nabo cozido','veg',22,0.7,5,0.1],
+['ervilhatorta','Ervilha-torta','veg',40,2.8,7.5,0.2],
+['broto','Broto de feijão','veg',30,3,6,0.2],
+['azeitona','Azeitona','gord',115,0.8,6,11],
+['picles','Picles','veg',19,0.5,4,0.2],
+['milhoverde','Milho em lata','carb',82,2.6,16.6,1.1,['colher de sopa','colheres de sopa',20]],
+['salada','Salada mista temperada','veg',45,1.2,6,2],
+['vinagrete','Vinagrete','veg',35,0.8,5,1.5,['colher de sopa','colheres de sopa',25]],
+['legumes','Legumes refogados','veg',55,2,8,2],
+['chuchu2','Chuchu refogado','veg',40,0.8,6,1.5],
+['ketchup','Ketchup','doce',99,1.2,27,0.1,['colher de sopa','colheres de sopa',17]],
+['mostarda','Mostarda','veg',60,3.7,5.8,3.3,['colher de chá','colheres de chá',5]],
+['shoyu','Molho shoyu','veg',53,8,5,0.1,['colher de sopa','colheres de sopa',15]],
+['molhobarbecue','Molho barbecue','doce',120,0.8,28,0.5,['colher de sopa','colheres de sopa',15]],
+['molhobranco','Molho branco (bechamel)','gord',120,3,9,8,['colher de sopa','colheres de sopa',25]],
+['pesto','Pesto','gord',390,5,6,38],
+['vinagre','Vinagre','veg',18,0,0.6,0,['colher de sopa','colheres de sopa',15]],
+['acucar','Açúcar refinado','doce',387,0,99.5,0,['colher de chá','colheres de chá',5]],
+['acucarmasc','Açúcar mascavo','doce',369,0.7,94,0,['colher de chá','colheres de chá',5]],
+['adocante','Adoçante (gotas)','veg',0,0,0,0],
+['melado','Melado de cana','doce',290,0,75,0,['colher de sopa','colheres de sopa',20]],
+['geleia','Geleia de frutas','doce',278,0.4,70,0.1,['colher de sopa','colheres de sopa',20]],
+['geleiaslight','Geleia sem açúcar','doce',90,0.3,22,0,['colher de sopa','colheres de sopa',20]],
+['nutella','Creme de avelã com cacau','doce',540,6,58,31,['colher de sopa','colheres de sopa',20]],
+['pacoca','Paçoca','doce',510,17,52,28,['unidade','unidades',20,true]],
+['pecanoz','Cocada','doce',420,2,65,18,['unidade','unidades',40,true]],
+['beijinho','Beijinho','doce',390,3.5,55,18,['unidade','unidades',25,true]],
+['pedeleite','Pé de moleque','doce',470,13,55,23,['unidade','unidades',25,true]],
+['rapadura','Rapadura','doce',352,0.5,90,0.1,['pedaço','pedaços',20,true]],
+['goiabada','Goiabada','doce',285,0.4,74,0.1,['fatia','fatias',30,true]],
+['bananada','Bananada','doce',275,1,70,0.3,['unidade','unidades',30,true]],
+['marshmallow','Marshmallow','doce',318,2,81,0.2],
+['balas','Bala/jujuba','doce',350,3,80,0.5,['unidade','unidades',5,true]],
+['chiclete','Chiclete sem açúcar','doce',2,0,0.5,0],
+['chocobranco','Chocolate branco','doce',539,5.9,59,32,['quadradinho','quadradinhos',10,true]],
+['chocoamargo','Chocolate 85% cacau','doce',600,12,30,50,['quadradinho','quadradinhos',10,true]],
+['bombom','Bombom','doce',500,6,55,29,['unidade','unidades',15,true]],
+['ovopascoa','Ovo de Páscoa (chocolate ao leite)','doce',530,7,58,30],
+['trufa','Trufa de chocolate','doce',480,5,45,31,['unidade','unidades',20,true]],
+['chocoaoleite','Barra de chocolate recheada','doce',510,6,60,27],
+['sorvetefruta','Sorvete de fruta (sorbet)','doce',120,0.5,30,0.1,['bola','bolas',60,true]],
+['picole','Picolé de fruta','doce',85,0.2,21,0.1,['unidade','unidades',60,true]],
+['picolecreme','Picolé de leite/chocolate','doce',160,2.5,25,6,['unidade','unidades',60,true]],
+['sorveteskimo','Sorvete de massa no cone','doce',215,3.5,30,9,['unidade','unidades',100,true]],
+['bolochoc','Bolo de chocolate','doce',370,5.5,55,14,['fatia','fatias',60,true]],
+['bolocenoura','Bolo de cenoura com cobertura','doce',380,5,55,16,['fatia','fatias',60,true]],
+['bolofuba','Bolo de fubá','doce',300,5,48,10,['fatia','fatias',60,true]],
+['bolocaseiro','Bolo de laranja','doce',320,5,50,11,['fatia','fatias',60,true]],
+['bolopote','Bolo de pote','doce',320,4,40,16,['pote','potes',150,true]],
+['bolofit','Bolo fit de banana e aveia','doce',190,6,28,5,['fatia','fatias',60,true]],
+['tortalimao','Torta de limão','doce',350,4,48,16,['fatia','fatias',100,true]],
+['tortaholandesa','Torta holandesa','doce',380,4,44,21,['fatia','fatias',100,true]],
+['pudim','Pudim de leite','doce',180,5,30,5,['fatia','fatias',100,true]],
+['mousse','Mousse de maracujá','doce',190,3,28,7,['pote','potes',100,true]],
+['brownie','Brownie','doce',405,5,52,20,['unidade','unidades',50,true]],
+['cookie','Cookie com gotas de chocolate','doce',485,5,65,23,['unidade','unidades',30,true]],
+['donut','Donut','doce',410,5,50,21,['unidade','unidades',60,true]],
+['croissant','Croissant','doce',406,8,46,21,['unidade','unidades',60,true]],
+['churros','Churros','doce',350,4,45,17,['unidade','unidades',80,true]],
+['pamonha','Pamonha','carb',165,3,28,4.5,['unidade','unidades',150,true]],
+['curau','Curau','doce',120,3,20,3],
+['arrozdoce','Arroz-doce','doce',140,3,26,3],
+['canjicadoce','Canjica com leite','doce',140,3,25,3],
+['sagu','Sagu','doce',110,0.5,25,1.5],
+['gelatina','Gelatina pronta','doce',62,1.2,14,0],
+['gelatinazero','Gelatina diet','veg',10,1.5,0.7,0],
+['f_acai2','Açaí 500 ml sem complementos','fora',110,1.3,13,5.5,['copo','copos',300,true]],
+['f_acaigrande','Açaí com leite em pó e granola (500 ml)','fora',210,3,32,8,['copo','copos',500,true]],
+['f_tapiocaqueijo','Tapioca recheada (queijo e presunto)','fora',220,9,34,5,['unidade','unidades',120,true]],
+['f_cuscuz','Cuscuz com carne de sol e ovo','fora',190,11,24,5,['prato','pratos',300,true]],
+['f_baiao','Baião de dois com queijo coalho','fora',190,9,24,6,['prato','pratos',300,true]],
+['f_baiao2','Carne de sol com macaxeira','fora',230,17,22,9,['prato','pratos',350,true]],
+['f_pizzamuc','Pizza muçarela (fatia)','fora',265,11,33,10,['fatia','fatias',110,true]],
+['f_pizzacalab','Pizza calabresa (fatia)','fora',285,11,31,13,['fatia','fatias',110,true]],
+['f_pizzafrango','Pizza frango com catupiry (fatia)','fora',260,12,31,10,['fatia','fatias',110,true]],
+['f_calzone','Calzone','fora',290,11,35,12,['unidade','unidades',200,true]],
+['f_hotdog','Cachorro-quente completo','fora',240,9,26,11,['unidade','unidades',180,true]],
+['f_xburger','X-burger','fora',265,13,24,13,['unidade','unidades',230,true]],
+['f_xtudo','X-tudo','fora',260,12,23,14,['unidade','unidades',350,true]],
+['f_xsalada','X-salada','fora',250,12,24,12,['unidade','unidades',250,true]],
+['f_sanduiche','Sanduíche natural (frango e salada)','fora',180,11,24,4.5,['unidade','unidades',150,true]],
+['f_misto','Misto-quente','fora',300,13,29,15,['unidade','unidades',120,true]],
+['f_pao_ovo','Pão com ovo','fora',240,10,28,9,['unidade','unidades',100,true]],
+['f_pao_manteiga','Pão francês com manteiga','fora',340,8,50,12,['unidade','unidades',60,true]],
+['f_empada','Empada de frango','fora',345,7,34,20,['unidade','unidades',60,true]],
+['f_kibe','Quibe frito','fora',245,13,18,13,['unidade','unidades',90,true]],
+['f_enroladosalsicha','Enroladinho de salsicha','fora',310,8,30,18,['unidade','unidades',60,true]],
+['f_risole','Risole de carne','fora',270,8,30,13,['unidade','unidades',60,true]],
+['f_acaraje','Acarajé','fora',290,8,28,16,['unidade','unidades',120,true]],
+['f_tapioca_carne','Tapioca com carne de sol','fora',210,10,34,4,['unidade','unidades',150,true]],
+['f_pasteldeforno','Pastel de forno','fora',290,9,34,13,['unidade','unidades',80,true]],
+['f_pasteldequeijo','Pastel de queijo frito','fora',340,10,34,19,['unidade','unidades',100,true]],
+['f_espetinho','Espetinho de carne','fora',220,20,1,15,['unidade','unidades',90,true]],
+['f_espetinhofrango','Espetinho de frango','fora',165,22,1,8,['unidade','unidades',90,true]],
+['f_churrasco','Churrasco (porção mista sem farofa)','fora',260,26,0,17,['porção','porções',200,true]],
+['f_farofa_rest','Farofa de restaurante','fora',420,3,65,16],
+['f_vinagrete_rest','Vinagrete de restaurante','fora',50,1,6,2.5],
+['f_feijoada','Feijoada (porção)','fora',165,9,12,9,['porção','porções',300,true]],
+['f_strogonoff','Strogonoff de frango com arroz','fora',165,10,16,7,['prato','pratos',400,true]],
+['f_parmegiana','Filé à parmegiana','fora',235,16,10,14,['porção','porções',200,true]],
+['f_frango_assado','Frango assado com pele','fora',215,24,0,13],
+['f_galinhada','Galinhada','fora',160,11,18,5,['prato','pratos',400,true]],
+['f_macarronada','Macarronada com molho','fora',155,5.5,24,4,['prato','pratos',350,true]],
+['f_yakisoba','Yakisoba','fora',140,7,17,5,['prato','pratos',400,true]],
+['f_temaki','Temaki','fora',165,7,23,5,['unidade','unidades',120,true]],
+['f_hossomaki','Hosomaki/uramaki','fora',175,5,30,3.5,['unidade','unidades',25,true]],
+['f_hotroll','Hot roll (frito)','fora',230,6,32,9,['unidade','unidades',30,true]],
+['f_pizza_borda','Pizza grande com borda recheada (fatia)','fora',300,12,34,13,['fatia','fatias',130,true]],
+['f_nuggets','Nuggets (6 unidades)','fora',270,14,17,16,['porção','porções',120,true]],
+['f_batatacheddar','Batata frita com cheddar e bacon','fora',330,8,34,19,['porção','porções',200,true]],
+['f_onion','Onion rings','fora',290,4,34,15],
+['f_sorveteloja','Sorvete de loja (2 bolas)','fora',215,3.5,30,9,['copo','copos',120,true]],
+['f_milkshakeg','Milkshake grande','fora',135,3,21,4,['copo','copos',500,true]],
+['f_cafe_padaria','Café com leite e pão com manteiga','fora',180,5,25,6,['combo','combos',250,true]],
+['f_suco_natural','Suco de fruta com açúcar','fora',60,0.5,15,0,['copo','copos',300,true]],
+['f_cerveja_long','Cerveja long neck','fora',43,0.3,3.6,0,['garrafa','garrafas',355,true]],
+['f_chopp','Chopp','fora',42,0.3,3.5,0,['copo','copos',300,true]],
+['f_pao_queijo2','Pão de queijo recheado','fora',300,8,35,14,['unidade','unidades',60,true]]
+];
+const FOODS=RAW.map(r=>({id:r[0],n:r[1],c:r[2],k:r[3],p:r[4],ch:r[5],g:r[6],u:r[7]?{s:r[7][0],pl:r[7][1],g:r[7][2],whole:!!r[7][3]}:null}));
+const FOODMAP=Object.fromEntries(FOODS.map(f=>[f.id,f]));
+
+/* cardápios base (quantidades iniciais, ajustadas à meta). Três opções que se alternam na semana. */
+const TEMPLATES=[
+ [
+  {nome:'Café da manhã',hora:'07:00',it:[['ovo',100],['paoint',50],['mamao',150]]},
+  {nome:'Lanche da manhã',hora:'10:00',it:[['iogn',170],['aveia',20]]},
+  {nome:'Almoço',hora:'12:30',it:[['frango',130],['arroz',100],['feijao',90],['brocolis',100],['alface',50],['tomate',80],['azeite',8]]},
+  {nome:'Lanche da tarde',hora:'16:00',it:[['banana',100],['pasta',15]]},
+  {nome:'Jantar',hora:'19:30',it:[['tilapia',150],['batdoce',150],['abobrinha',100],['azeite',5]]},
+  {nome:'Ceia',hora:'21:30',it:[['cottage',100]]}
+ ],
+ [
+  {nome:'Café da manhã',hora:'07:00',it:[['tapioca',50],['ovo',100],['laranja',150]]},
+  {nome:'Lanche da manhã',hora:'10:00',it:[['iogg',150],['morango',100]]},
+  {nome:'Almoço',hora:'12:30',it:[['patinho',120],['arrozi',100],['feijao',90],['couve',50],['tomate',80],['alface',40],['azeite',8]]},
+  {nome:'Lanche da tarde',hora:'16:00',it:[['maca',130],['castanha',10]]},
+  {nome:'Jantar',hora:'19:30',it:[['frango',130],['macaxeira',120],['chuchu',100],['azeite',5]]},
+  {nome:'Ceia',hora:'21:30',it:[['leited',200]]}
+ ],
+ [
+  {nome:'Café da manhã',hora:'07:00',it:[['cuscuz',100],['ovo',100],['mamao',150]]},
+  {nome:'Lanche da manhã',hora:'10:00',it:[['iogn',170],['chia',10]]},
+  {nome:'Almoço',hora:'12:30',it:[['tilapia',150],['arroz',100],['feijao',90],['brocolis',100],['cenoura',60],['azeite',8]]},
+  {nome:'Lanche da tarde',hora:'16:00',it:[['whey',30],['banana',100]]},
+  {nome:'Jantar',hora:'19:30',it:[['ovo',100],['peru',30],['batdoce',130],['alface',50],['tomate',60],['azeite',5]]},
+  {nome:'Ceia',hora:'21:30',it:[['cottage',100]]}
+ ]
+];
+/* fator para estimar o peso cru na compra (os cardápios usam o peso pronto) */
+const BUY={arroz:0.4,arrozi:0.4,feijao:0.4,macarrao:0.45,frango:1.35,patinho:1.4,tilapia:1.3};
+const RECIPES=[
+ {id:'mousse',nome:'Mousse de cacau com iogurte',tipo:'Doce',tempo:'5 min',ing:[['iogg',150],['cacau',8],['mel',10]],passos:['Misture o cacau e o mel no iogurte grego até ficar liso.','Leve à geladeira por 15 minutos e sirva gelado.']},
+ {id:'bananacacau',nome:'Banana quente com cacau',tipo:'Doce',tempo:'5 min',ing:[['banana',100],['cacau',8],['pasta',10]],passos:['Corte a banana em rodelas e aqueça 1 minuto no micro-ondas.','Polvilhe o cacau e finalize com a pasta de amendoim.']},
+ {id:'iogmorango',nome:'Iogurte com morango e chocolate 70%',tipo:'Doce',tempo:'3 min',ing:[['iogn',170],['morango',100],['choco70',10]],passos:['Pique os morangos e coloque sobre o iogurte.','Rale o chocolate por cima.']},
+ {id:'brigadeirowhey',nome:'Brigadeiro de colher com whey',tipo:'Doce',tempo:'5 min',ing:[['whey',30],['cacau',8],['leited',60]],passos:['Misture o whey e o cacau com o leite até virar um creme.','Para ficar mais firme, leve ao micro-ondas por 20 segundos e mexa.']},
+ {id:'sorvetebanana',nome:'Sorvete de banana e morango',tipo:'Doce',tempo:'5 min',ing:[['banana',100],['morango',100],['iogn',50]],passos:['Congele a banana e o morango em pedaços.','Bata no liquidificador com o iogurte até ficar cremoso.']},
+ {id:'panqueca',nome:'Panqueca de banana e aveia',tipo:'Doce',tempo:'10 min',ing:[['banana',100],['ovo',50],['aveia',30]],passos:['Amasse a banana e misture com o ovo e a aveia.','Doure dos dois lados em frigideira antiaderente, em fogo baixo.']},
+ {id:'tapiocacottage',nome:'Tapioca de cottage e tomate',tipo:'Salgado',tempo:'5 min',ing:[['tapioca',50],['cottage',50],['tomate',40]],passos:['Espalhe a goma em frigideira quente e deixe firmar.','Recheie com o cottage e o tomate e dobre.']},
+ {id:'omelete',nome:'Omelete de claras com legumes',tipo:'Salgado',tempo:'10 min',ing:[['ovo',50],['clara',66],['tomate',50],['abobrinha',40]],passos:['Bata o ovo e as claras e misture os legumes picados.','Cozinhe em frigideira antiaderente tampada, em fogo baixo.']}
+];
+
+/* ---------- estado ---------- */
+let S;
+const food=id=>FOODMAP[id]||(S&&S.custom.find(f=>f.id===id))||null;
+const allFoods=()=>FOODS.concat(S.custom);
+
+function calcMeta(p){
+  const tmb=10*p.peso+6.25*p.altura-5*p.idade-161;
+  const tdee=tmb*p.ativ;
+  let k=p.obj==='perder'?tdee*(1-p.ritmo):p.obj==='ganhar'?tdee*1.1:tdee;
+  k=Math.max(1200,Math.round(k/10)*10);
+  const prot=Math.round(p.peso*(p.obj==='ganhar'?2:1.8));
+  let gord=Math.round(p.peso*0.8);
+  let carb=Math.round((k-prot*4-gord*9)/4);
+  if(carb<100){gord=Math.round(p.peso*0.6);carb=Math.max(0,Math.round((k-prot*4-gord*9)/4))}
+  return{tmb:Math.round(tmb),tdee:Math.round(tdee),kcal:k,prot,gord,carb,agua:p.peso*0.03};
+}
+const mac=(f,g)=>({k:f.k*g/100,p:f.p*g/100,c:f.ch*g/100,g:f.g*g/100});
+function sumItems(items){
+  const t={k:0,p:0,c:0,g:0};
+  items.forEach(it=>{const f=food(it.f);if(!f)return;const m=mac(f,it.g);t.k+=m.k;t.p+=m.p;t.c+=m.c;t.g+=m.g});
+  return t;
+}
+const planTotals=meals=>sumItems(meals.flatMap(m=>m.items));
+function scalePlan(meals,factor){
+  meals.forEach(m=>m.items.forEach(it=>{
+    const f=food(it.f);const step=f&&f.u&&f.u.whole?f.u.g:5;
+    it.g=Math.max(step,Math.round(it.g*factor/step)*step);
+  }));
+}
+function buildPlan(target,tpl){
+  const meals=(tpl||TEMPLATES[0]).map(m=>({id:uid(),nome:m.nome,hora:m.hora,items:m.it.map(([f,g])=>({id:uid(),f,g}))}));
+  scalePlan(meals,target/planTotals(meals).k);
+  return meals;
+}
+function unitText(f,g){
+  if(!f||!f.u)return'';
+  const n=Math.round(g/f.u.g*2)/2;
+  if(n<0.5)return'';
+  return'≈ '+fmt(n,n%1?1:0)+' '+(n===1?f.u.s:f.u.pl);
+}
+const WEEKMAP=[0,1,2,0,1,2,0];
+const buildWeek=t=>WEEKMAP.map(i=>buildPlan(t,TEMPLATES[i]));
+let viewDay=0;
+function defaults(){
+  const profile={peso:81,altura:165,idade:30,ativ:1.55,obj:'perder',ritmo:0.2,ageSet:false};
+  return{profile,custom:[],plans:buildWeek(calcMeta(profile).kcal),log:{},medidas:[],shop:{}};
+}
+function norm0(o){
+  if(!o||!o.profile)return null;
+  if(!Array.isArray(o.plans)||o.plans.length!==7){
+    o.plans=buildWeek(calcMeta(o.profile).kcal);
+    if(Array.isArray(o.meals))o.plans[0]=o.meals;
+  }
+  delete o.meals;
+  return Object.assign({custom:[],log:{},medidas:[],shop:{}},o);
+}
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);if(!r)return null;
+    return norm0(JSON.parse(r));
+  }catch(e){}
+  return null;
+}
+/* guardar: neste aparelho e, quando a pessoa está logada no Claude, também na conta dela */
+let cloudMode='',cloudWhy='',localOk=true,cloudCol=null,cloudState='wait',cloudTimer=0,cloudBusy=false,cloudDirty=false,cloudLast={},bannerOff=false;
+function splitState(o){
+  const core=Object.assign({},o),log=core.log||{};delete core.log;
+  const docs={core:JSON.stringify(core)},by={};
+  Object.keys(log).forEach(k=>{const m=k.slice(0,7);(by[m]=by[m]||{})[k]=log[k]});
+  Object.keys(by).forEach(m=>{docs['log_'+m]=JSON.stringify(by[m])});
+  return docs;
+}
+function save(keep){
+  let o;
+  try{
+    S.plans[viewDay]=S.meals;if(!keep)S.updated=Date.now();
+    o=Object.assign({},S);delete o.meals;
+    localStorage.setItem(KEY,JSON.stringify(o));
+    if(localStorage.getItem(KEY)===null)localOk=false;
+  }catch(e){localOk=false}
+  if(cloudCol){cloudDirty=true;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1200)}
+}
+async function cloudPush(){
+  if(!cloudCol)return;
+  if(cloudBusy){cloudDirty=true;return}
+  cloudBusy=true;cloudDirty=false;
+  try{
+    const o=Object.assign({},S);delete o.meals;o.plans=S.plans;
+    const docs=splitState(o);
+    for(const n of Object.keys(docs)){
+      if(cloudLast[n]===docs[n])continue;
+      await cloudCol.doc(n).set({json:docs[n],t:Date.now()});
+      cloudLast[n]=docs[n];
+    }
+    cloudState='ok';
+  }catch(e){cloudState='err';cloudWhy+=' escrita='+((e&&(e.code||e.message))||'?')}
+  cloudBusy=false;
+  if(cloudDirty)cloudTimer=setTimeout(cloudPush,500);
+}
+async function initCloud(){
+  try{
+    const t=ms=>new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),ms));
+    if(!window.claude||!window.claude.use){cloudState='off';cloudWhy='sem window.claude';return}
+    const db=await window.claude.use('db'),user=await window.claude.use('user');
+    const id=user&&user.id?await user.id():null;
+    cloudWhy='db='+(db?'sim':'nao')+' user='+(user?'sim':'nao')+' id='+(id?'sim':'nao');
+    if(!db||!id){cloudState='off';return}
+    const col=db.collection('data/users/'+id);
+    const snap=await Promise.race([col.get(),t(10000)]);
+    const docs={};snap.docs.forEach(d=>{const x=d.data();if(x&&typeof x.json==='string')docs[d.id]=x.json});
+    if(docs.core){
+      let c=null;try{c=JSON.parse(docs.core)}catch(e){}
+      if(c&&c.profile){
+        c.log={};
+        Object.keys(docs).filter(n=>n.indexOf('log_')===0).forEach(n=>{try{Object.assign(c.log,JSON.parse(docs[n]))}catch(e){}});
+        if((c.updated||0)>(S.updated||0)){
+          const ns=norm0(c);
+          if(ns){S=ns;viewDay=todayIdx();S.meals=S.plans[viewDay];
+            try{localStorage.setItem(KEY,JSON.stringify(Object.assign({},S,{meals:undefined})))}catch(e){}}
+        }
+      }
+    }
+    Object.keys(docs).forEach(n=>{cloudLast[n]=docs[n]});
+    cloudCol=col;cloudState='ok';
+    if(!docs.core||(S.updated||0)>0)cloudPush();
+  }catch(e){cloudState='err';cloudWhy+=' erro='+((e&&(e.code||e.message))||'?')}
+}
+function storageNote(){
+  if(SA){return localOk?{ok:true,t:'Seus dados ficam salvos neste aparelho, no Safari. Para não perder nada, faça uma cópia em Backup dos dados de vez em quando.'}:{ok:false,t:'Este navegador não está guardando dados (modo privado?). Abra o app numa aba normal do Safari.'}}
+  if(cloudState==='ok')return{ok:true,t:'Seus dados estão salvos na sua conta do Claude. Se você trocar de celular ou limpar o Safari, eles voltam ao abrir o link logada.'};
+  if(cloudState==='err')return{ok:false,t:'Não consegui salvar na sua conta agora. Os dados ficam só neste aparelho. Use o Backup dos dados para ter uma cópia.'};
+  if(!localOk)return{ok:false,t:'Este navegador não está guardando dados. Abra o link logada na sua conta do Claude (claude.ai) para o app salvar suas informações.'};
+  return{ok:false,t:'Os dados estão sendo guardados só neste aparelho e podem se perder. Para salvar na sua conta, abra o link logada no claude.ai.'};
+}
+function storageBanner(){
+  if(SA&&localOk)return'';
+  if(bannerOff||cloudState==='ok'||cloudState==='wait')return'';
+  const n=storageNote();
+  return`<section class="card warnc"><p class="small" style="margin:0"><b>Atenção:</b> ${esc(n.t)}</p><p class="small muted" style="margin:6px 0 0">Detalhe: ${esc(cloudWhy||'-')}</p><button class="link" data-act="bannerx" style="margin-top:8px">Entendi</button></section>`;
+}
+
+/* desfazer e aviso */
+let undoSnap=null,toastTimer=0;
+function toast(msg,undoable){
+  $('#toast-msg').textContent=msg;
+  const b=$('#toast-act');b.hidden=!undoable;b.textContent='Desfazer';
+  $('#toast').hidden=false;clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>{$('#toast').hidden=true},5500);
+}
+function snapshot(){S.plans[viewDay]=S.meals;undoSnap=JSON.stringify({plans:S.plans,custom:S.custom})}
+function undo(){
+  if(!undoSnap)return;
+  const o=JSON.parse(undoSnap);S.plans=o.plans;S.custom=o.custom;S.meals=S.plans[viewDay];undoSnap=null;save();
+  $('#toast').hidden=true;render();
+}
+
+/* ---------- aba Meta ---------- */
+const ATIV=[[1.2,'Sedentária (pouco movimento)'],[1.375,'Leve (treina 1 a 3x por semana)'],[1.55,'Moderada (treina 3 a 5x por semana)'],[1.725,'Alta (treina 6 a 7x ou trabalho pesado)']];
+const TREINO=[[0,'Nenhuma'],[100,'+100 kcal (musculação leve)'],[150,'+150 kcal'],[200,'+200 kcal (treino forte)']];
+const OBJ=[['perder','Perder gordura e definir'],['manter','Manter o peso'],['ganhar','Ganhar massa']];
+const RITMO=[[0.1,'Leve (10% a menos)'],[0.2,'Moderado (20% a menos)'],[0.25,'Firme (25% a menos)']];
+const opts=(list,sel)=>list.map(([v,t])=>`<option value="${v}"${String(v)===String(sel)?' selected':''}>${t}</option>`).join('');
+
+function renderMeta(){
+  const p=S.profile;
+  $('#view').innerHTML=`
+  ${back()}
+  <section class="card">
+    <h2>Seus dados</h2>
+    <div class="grid2">
+      <label class="f">Peso (kg)<input id="f-peso" inputmode="decimal" autocomplete="off" value="${dv(p.peso)}"></label>
+      <label class="f">Altura (cm)<input id="f-altura" inputmode="numeric" autocomplete="off" value="${dv(p.altura)}"></label>
+      <label class="f">Idade (anos)<input id="f-idade" inputmode="numeric" autocomplete="off" value="${dv(p.idade)}"><span class="hint" id="ageHint"${p.ageSet?' hidden':''}>Valor de exemplo. Ajuste para a idade dela.</span></label>
+      <label class="f">Treino<select id="f-ativ">${opts(ATIV,p.ativ)}</select></label>
+      <label class="f full">Objetivo<select id="f-obj">${opts(OBJ,p.obj)}</select></label>
+      <label class="f full" id="ritmoBox"${p.obj==='perder'?'':' hidden'}>Ritmo da perda<select id="f-ritmo">${opts(RITMO,p.ritmo)}</select></label>
+      <label class="f full">Calorias extras no dia de treino<select id="f-treino">${opts(TREINO,tk())}</select></label>
+    </div>
+  </section>
+  <div id="metaOut"></div>
+  <section class="card">
+    <h2>Doce planejado</h2>
+    <p class="small muted" style="margin-bottom:8px">Em vez de cortar tudo, escolha 2 ou 3 doces por semana, em porção pequena, e conte no dia.</p>
+    <ul class="list" id="sweets"></ul>
+  </section>
+  <section class="card">
+    <h2>Lembretes</h2>
+    <ul class="tips">
+      <li>A gordura da barriga não sai sozinha. Ela diminui com o corpo todo, com déficit de calorias e musculação.</li>
+      <li>Beber água, dormir 7 a 8 horas e evitar refrigerante e suco ajudam a controlar a vontade de doce.</li>
+      <li>Meça a cintura e pese a cada 2 semanas, não todo dia.</li>
+      <li>Sobre o anticoncepcional, converse com a ginecologista antes de mudar qualquer coisa.</li>
+    </ul>
+    <p class="small muted" style="margin-top:12px">Estimativa pela fórmula Mifflin-St Jeor. Um nutricionista ajusta melhor os valores. Para ter o app na tela inicial do iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.</p>
+  </section>`;
+  updateMeta();
+  $('#sweets').innerHTML=[['choco70',20],['brigadeiro',25],['sorvete',60],['bolo',60]].map(([id,g])=>{
+    const f=FOODMAP[id];return`<li><span>${esc(f.n)}<br><span class="small muted">${fmt(g)} g ${f.u?'('+unitText(f,g).replace('≈ ','')+')':''}</span></span><b>${fmt(mac(f,g).k)} kcal</b></li>`;
+  }).join('');
+}
+function updateMeta(){
+  const m=calcMeta(S.profile),el=$('#metaOut');if(!el)return;
+  const tot=m.prot*4+m.carb*4+m.gord*9||1;
+  const pc=n=>(n/tot*100).toFixed(1)+'%';
+  el.innerHTML=`
+  <section class="hero" aria-live="polite">
+    <div class="eyebrow">Meta diária</div>
+    <div class="big">${fmt(m.kcal)}<span>kcal</span></div>
+    <div class="sub">Gasto estimado ${fmt(m.tdee)} kcal por dia. Metabolismo basal ${fmt(m.tmb)} kcal.</div>
+    <div class="split" role="img" aria-label="Divisão de calorias entre proteína, carboidrato e gordura">
+      <i style="width:${pc(m.prot*4)};background:var(--p)"></i><i style="width:${pc(m.carb*4)};background:var(--c)"></i><i style="width:${pc(m.gord*9)};background:var(--g)"></i>
+    </div>
+    <div class="legend">
+      <div><span><i class="dot" style="background:var(--p)"></i>Proteína</span><b>${m.prot} g</b></div>
+      <div><span><i class="dot" style="background:var(--c)"></i>Carboidrato</span><b>${m.carb} g</b></div>
+      <div><span><i class="dot" style="background:var(--g)"></i>Gordura</span><b>${m.gord} g</b></div>
+    </div>
+  </section>
+  <section class="card"><ul class="list">
+    <li><span>Água por dia</span><b>${fmt(m.agua,1)} L</b></li>
+    <li><span>Proteína por refeição (4 a 5 refeições)</span><b>${Math.round(m.prot/5)} a ${Math.round(m.prot/4)} g</b></li>
+  </ul>
+  <button class="btn block" data-act="fitall" style="margin-top:12px">Ajustar o cardápio da semana a esta meta</button></section>`;
+}
+function onMetaInput(e){
+  const id=e.target.id;if(!id||id.indexOf('f-')!==0)return;
+  const p=S.profile,v=e.target.value;
+  const lim={peso:[35,250],altura:[120,220],idade:[18,90]};
+  if(id==='f-obj'){p.obj=v;$('#ritmoBox').hidden=v!=='perder'}
+  else if(id==='f-ativ')p.ativ=parseFloat(v);
+  else if(id==='f-ritmo')p.ritmo=parseFloat(v);
+  else if(id==='f-treino')p.treinoKcal=parseInt(v,10)||0;
+  else{
+    const k=id.slice(2),n=num(v);
+    if(!lim[k]||!(n>=lim[k][0]&&n<=lim[k][1]))return;
+    p[k]=n;if(k==='idade'){p.ageSet=true;const h=$('#ageHint');if(h)h.hidden=true}
+  }
+  save();updateMeta();
+}
+
+/* ---------- aba Cardápio ---------- */
+const IC={
+  swap:'<svg viewBox="0 0 24 24"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>',
+  del:'<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>'
+};
+const bar=(label,val,target,color)=>{
+  const pct=Math.min(100,target?val/target*100:0);
+  return`<div class="bar"><span>${label}</span><div class="tr"><i style="width:${pct.toFixed(1)}%;background:${color}"></i></div><span>${fmt(val)} / ${fmt(target)} g</span></div>`;
+};
+function renderCard(){
+  const days=DIAS.map((d,i)=>`<button class="chip" data-act="day" data-d="${i}" aria-pressed="${i===viewDay}"${i===todayIdx()?' data-today="true"':''}>${d.slice(0,3)}</button>`).join('');
+  const meta=calcMeta(S.profile),T=planTotals(S.meals);
+  const pct=Math.min(100,T.k/meta.kcal*100);
+  const off=Math.abs(T.k-meta.kcal)/meta.kcal>0.08;
+  const over=T.k>meta.kcal*1.02;
+  const meals=S.meals.map(m=>{
+    const t=sumItems(m.items);
+    const rows=m.items.map(it=>{
+      const f=food(it.f);if(!f)return'';
+      const mm=mac(f,it.g),ut=unitText(f,it.g);
+      return`<li class="it" data-m="${m.id}" data-i="${it.id}">
+        <div class="it-name">${esc(f.n)}</div>
+        <div class="it-k">${fmt(mm.k)}<small>kcal</small></div>
+        <div class="it-ctl"><input data-act="grams" inputmode="decimal" value="${dv(it.g)}" aria-label="Quantidade de ${esc(f.n)} em gramas"><span class="u">g ${ut?'· '+ut:''}</span></div>
+        <div class="it-btns"><button class="ib" data-act="swap" aria-label="Trocar ${esc(f.n)}">${IC.swap}</button><button class="ib" data-act="del" aria-label="Remover ${esc(f.n)}">${IC.del}</button></div>
+      </li>`;
+    }).join('');
+    return`<section class="card" data-m="${m.id}">
+      <div class="meal-h"><input class="meal-name" data-act="rename" value="${esc(m.nome)}" aria-label="Nome da refeição"><input class="meal-time" type="time" data-act="time" value="${esc(m.hora)}" aria-label="Horário"></div>
+      <div class="meal-sum"><b>${fmt(t.k)} kcal</b> · P ${fmt(t.p)} g · C ${fmt(t.c)} g · G ${fmt(t.g)} g</div>
+      <ul class="items">${rows||'<li class="it small muted" style="display:block">Nenhum alimento ainda.</li>'}</ul>
+      <div class="meal-actions"><button class="btn ghost" data-act="add" data-m="${m.id}">Adicionar alimento</button><button class="link danger" data-act="delmeal" data-m="${m.id}">Remover refeição</button></div>
+    </section>`;
+  }).join('');
+  $('#view').innerHTML=`
+  <div class="chips" aria-label="Dia da semana">${days}</div>
+  <section class="card">
+    <div class="gauge">
+      <svg viewBox="0 0 200 112" role="img" aria-label="${fmt(T.k)} de ${fmt(meta.kcal)} calorias">
+        <path d="M 20 100 A 80 80 0 0 1 180 100" pathLength="100" fill="none" stroke="var(--surface2)" stroke-width="16" stroke-linecap="round"/>
+        <path class="fill" d="M 20 100 A 80 80 0 0 1 180 100" pathLength="100" fill="none" stroke="${over?'var(--warn)':'var(--flesh)'}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${pct.toFixed(1)} 100"/>
+      </svg>
+      <div class="mid"><b>${fmt(T.k)}</b><div>de ${fmt(meta.kcal)} kcal</div></div>
+    </div>
+    <div class="bars">${bar('Proteína',T.p,meta.prot,'var(--p)')}${bar('Carboidrato',T.c,meta.carb,'var(--c)')}${bar('Gordura',T.g,meta.gord,'var(--g)')}</div>
+    ${off?`<div class="notice"><span>Este cardápio soma ${fmt(T.k)} kcal e a meta é ${fmt(meta.kcal)} kcal.</span><button class="btn" data-act="fitplan">Ajustar porções à meta</button></div>`:''}
+  </section>
+  ${meals}
+  <button class="btn ghost block" data-act="addmeal">Adicionar refeição</button>
+  <p style="text-align:center;margin-top:10px"><button class="link" data-act="resetplan">Restaurar cardápio sugerido</button></p>`;
+}
+function findItem(el){
+  const li=el.closest('[data-i]');if(!li)return{};
+  const m=S.meals.find(x=>x.id===li.dataset.m);
+  return{m,it:m&&m.items.find(x=>x.id===li.dataset.i)};
+}
+function fitPlan(){
+  const meta=calcMeta(S.profile),T=planTotals(S.meals);
+  if(!T.k)return;
+  snapshot();scalePlan(S.meals,meta.kcal/T.k);save();
+  toast('Porções ajustadas para '+fmt(meta.kcal)+' kcal',true);render();
+}
+
+/* ---------- escolher alimento (adicionar e trocar) ---------- */
+let sheetCtx=null,sheetCat='',calcCat='',calcSel=null;
+function chipsHTML(active){
+  const keys=['',...Object.keys(CATS).filter(k=>k!=='meu'||S.custom.length)];
+  return keys.map(k=>`<button class="chip" data-act="cat" data-cat="${k}" aria-pressed="${k===active}">${k?CATS[k]:'Todos'}</button>`).join('');
+}
+function listHTML(q,cat,exclude,sel){
+  const n=norm(q.trim());
+  const items=allFoods().filter(f=>f.id!==exclude&&(!cat||(cat==='meu'?f.c==='meu':f.c===cat))&&(!n||norm(f.n).includes(n)));
+  if(!items.length)return'<p class="small muted" style="padding:14px 2px">Nenhum alimento encontrado. Você pode criar o seu na aba Calcular.</p>';
+  return items.map(f=>`<button class="fo" data-act="pick" data-food="${f.id}"${f.id===sel?' aria-current="true"':''}>
+    <span><span class="n">${esc(f.n)}</span>${f.c==='meu'?'<span class="mine">MEU</span>':''}<br><span class="d">${CATS[f.c]}${f.u?' · 1 '+f.u.s+' ≈ '+f.u.g+' g':''}</span></span>
+    <span class="k">${fmt(f.k)} kcal<br>por 100 g</span></button>`).join('');
+}
+function openSheet(ctx){
+  sheetCtx=ctx;sheetCat=ctx.cat||'';
+  $('#sheet-title').textContent=ctx.mode==='swap'?'Trocar alimento':ctx.mode==='log'?'Comi fora do cardápio':'Adicionar alimento';
+  const note=$('#sheet-note');
+  note.hidden=!(ctx.mode==='swap'||ctx.cat==='fora');
+  if(ctx.cat==='fora')note.textContent='Valores médios de porções comuns. Ajuste a quantidade em gramas depois de registrar.';
+  if(ctx.mode==='swap')note.textContent='A quantidade é ajustada para manter quase as mesmas calorias (ou a mesma proteína, nas carnes e laticínios).';
+  $('#sq').value='';refreshSheet();
+  $('#sheet').hidden=false;document.body.classList.add('lock');
+  $('#sheet .panel-body').scrollTop=0;
+}
+function closeSheet(){$('#sheet').hidden=true;document.body.classList.remove('lock');sheetCtx=null}
+function refreshSheet(){
+  $('#sheet-chips').innerHTML=chipsHTML(sheetCat);
+  $('#sheet-list').innerHTML=listHTML($('#sq').value,sheetCat,sheetCtx&&sheetCtx.exclude);
+}
+function pickFood(id){
+  const f=food(id),c=sheetCtx;if(!f||!c)return;
+  if(c.mode==='log'){logOf(dkey(new Date())).extra.push({id:uid(),f:f.id,g:f.u?f.u.g:100});save();closeSheet();toast(f.n+' registrado em Hoje',false);render();return}
+  const m=S.meals.find(x=>x.id===c.m);if(!m){closeSheet();return}
+  snapshot();
+  if(c.mode==='swap'){
+    const it=m.items.find(x=>x.id===c.i),old=food(it.f);
+    const byProt=(old.c==='prot'||old.c==='lac')&&f.p>=5&&old.p>=5;
+    const target=byProt?old.p*it.g/100:old.k*it.g/100;
+    const per=byProt?f.p/100:f.k/100;
+    const step=f.u&&f.u.whole?f.u.g:5;
+    const g=per>0?Math.max(step,Math.round(target/per/step)*step):it.g;
+    it.f=f.id;it.g=g;
+    toast('Trocado por '+fmt(g)+' g de '+f.n,true);
+  }else{
+    m.items.push({id:uid(),f:f.id,g:f.u?f.u.g:100});
+    toast(f.n+' adicionado a '+m.nome,true);
+  }
+  save();closeSheet();render();
+}
+
+/* ---------- aba Calcular ---------- */
+function renderCalc(){
+  if(!calcSel||!food(calcSel.id))calcSel={id:'choco70',g:20};
+  $('#view').innerHTML=`
+  <section class="card photo-card"><h2>Foto da refeição</h2>
+    <p class="small muted">Tire uma foto do prato. O app estima os alimentos, as quantidades e as calorias, e você corrige o que precisar.</p>
+    <button class="btn block photo-btn" data-act="photo" style="margin-top:12px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Tirar ou escolher foto</button>
+    <p class="small muted photo-note">A análise por foto não está disponível nesta versão do app.</p>
+  </section>
+  <section class="card">
+    <h2>Quanto tem neste alimento?</h2>
+    <input class="inp" id="cq" type="search" placeholder="Buscar: arroz, banana, chocolate" autocomplete="off" aria-label="Buscar alimento">
+    <div class="chips" id="calc-chips" style="margin-top:10px"></div>
+    <div class="flist" id="calc-list"></div>
+  </section>
+  <section class="card" id="calc-detail"></section>
+  <section class="card est-card">
+    <h2>Sem rótulo? Estimar pelo nome</h2>
+    <p class="small muted">Digite o alimento, por exemplo "bisteca de porco grelhada". O app sugere os valores por 100 g no formulário abaixo. Confira antes de salvar.</p>
+    <input class="inp" id="est-nome" autocomplete="off" placeholder="Ex.: bisteca de porco grelhada" aria-label="Nome do alimento a estimar" style="margin-top:10px">
+    <p class="hint" id="est-err" hidden style="margin-top:8px"></p>
+    <button class="btn block" id="est-btn" data-act="estimate" style="margin-top:12px">Estimar valores</button>
+  </section>
+  <section class="card">
+    <h2>Criar alimento pelo rótulo</h2>
+    <p class="small muted" style="margin-bottom:12px">Copie os valores da tabela nutricional da embalagem, para a porção que aparece nela.</p>
+    <div class="grid2">
+      <label class="f full">Nome<input id="n-nome" autocomplete="off" placeholder="Ex.: Barra de cereal"></label>
+      <label class="f full">Porção do rótulo (g ou ml)<input id="n-por" inputmode="decimal" value="100"></label>
+      <label class="f">Calorias (kcal)<input id="n-k" inputmode="decimal"></label>
+      <label class="f">Proteínas (g)<input id="n-p" inputmode="decimal"></label>
+      <label class="f">Carboidratos (g)<input id="n-c" inputmode="decimal"></label>
+      <label class="f">Gorduras totais (g)<input id="n-g" inputmode="decimal"></label>
+    </div>
+    <p class="hint" id="n-err" hidden style="margin-top:10px"></p>
+    <button class="btn block" data-act="savefood" style="margin-top:12px">Salvar alimento</button>
+  </section>
+  ${S.custom.length?`<section class="card"><h2>Meus alimentos</h2><ul class="list">${S.custom.map(f=>`<li><span>${esc(f.n)}<br><span class="small muted">${fmt(f.k)} kcal por 100 g</span></span><button class="link danger" data-act="delfood" data-food="${f.id}">Excluir</button></li>`).join('')}</ul></section>`:''}`;
+  refreshCalcList();drawDetail();
+}
+function refreshCalcList(){
+  const q=$('#cq');if(!q)return;
+  $('#calc-chips').innerHTML=chipsHTML(calcCat);
+  $('#calc-list').innerHTML=listHTML(q.value,calcCat,null,calcSel&&calcSel.id);
+}
+function drawDetail(){
+  const f=food(calcSel.id),box=$('#calc-detail');if(!f||!box)return;
+  const meta=calcMeta(S.profile);
+  box.innerHTML=`
+    <div class="eyebrow">Alimento escolhido</div>
+    <h2 style="margin:4px 0 2px">${esc(f.n)}</h2>
+    <p class="small muted">${fmt(f.k)} kcal, ${fmt(f.p,1)} g proteína, ${fmt(f.ch,1)} g carboidrato e ${fmt(f.g,1)} g gordura em 100 g</p>
+    <div class="qrow" style="margin-top:14px">
+      <label class="f">Quantidade (g)<input id="cg" inputmode="decimal" value="${dv(calcSel.g)}"></label>
+      ${f.u?`<label class="f">${esc(f.u.pl.charAt(0).toUpperCase()+f.u.pl.slice(1))}<input id="cu" inputmode="decimal" value="${dv(Math.round(calcSel.g/f.u.g*100)/100)}"></label>`:'<div></div>'}
+    </div>
+    <div class="res" id="calc-res"></div>
+    <label class="f">Adicionar ao cardápio de ${DIAS[viewDay].toLowerCase()} em<select id="cm">${S.meals.map(m=>`<option value="${m.id}">${esc(m.nome)}</option>`).join('')}</select></label>
+    <button class="btn block" data-act="addcalc" style="margin-top:12px"${S.meals.length?'':' disabled'}>Adicionar ao cardápio</button>
+    <button class="btn ghost block" data-act="logcalc" style="margin-top:10px">Comi isso hoje</button>`;
+  drawRes();
+}
+function drawRes(){
+  const f=food(calcSel.id),el=$('#calc-res');if(!f||!el)return;
+  const m=mac(f,calcSel.g),meta=calcMeta(S.profile);
+  el.innerHTML=`<div><b>${fmt(m.k)}</b><span>kcal</span></div><div><b>${fmt(m.p,1)}</b><span>Prot. g</span></div><div><b>${fmt(m.c,1)}</b><span>Carb. g</span></div><div><b>${fmt(m.g,1)}</b><span>Gord. g</span></div>
+  <p class="small muted full" style="grid-column:1/-1">Isso é ${fmt(m.k/meta.kcal*100,1)}% da meta diária de ${fmt(meta.kcal)} kcal.</p>`;
+}
+function onCalcInput(e){
+  const id=e.target.id,f=calcSel&&food(calcSel.id);
+  if(id==='cq'){refreshCalcList();return}
+  if(!f)return;
+  if(id==='cg'||id==='cu'){
+    const n=num(e.target.value);if(!(n>=0&&n<=5000))return;
+    calcSel.g=id==='cu'?Math.round(n*f.u.g*10)/10:n;
+    const other=id==='cg'?$('#cu'):$('#cg');
+    if(other)other.value=dv(id==='cg'?Math.round(n/f.u.g*100)/100:Math.round(calcSel.g*10)/10);
+    drawRes();
+  }
+}
+async function estimateFood(){
+  const err=$('#est-err'),btn=$('#est-btn'),nome=$('#est-nome').value.trim().slice(0,80);
+  const fail=t=>{err.textContent=t;err.hidden=false};
+  if(!nome)return fail('Digite o nome do alimento.');
+  if(!sampleFn)return fail('A estimativa precisa do link aberto numa conta do Claude.');
+  err.hidden=true;btn.disabled=true;btn.textContent='Estimando...';
+  try{
+    const r=await sampleFn.json('Você é um assistente de nutrição. Informe valores nutricionais médios por 100 g do alimento: "'+nome+'", como normalmente é consumido (cozido ou pronto). Use a tabela TACO como referência. Responda somente com JSON: {"nome":"nome curto em português","kcal100":0,"p100":0,"c100":0,"g100":0}. Se não for um alimento, responda {"nome":"","kcal100":0,"p100":0,"c100":0,"g100":0}.',{modelTier:'default'});
+    const n=v=>{v=Number(v);return isFinite(v)&&v>=0?Math.round(v*10)/10:0};
+    const k=n(r&&r.kcal100);
+    if(!(k>0)||k>900||!r.nome)return fail('Não consegui estimar esse alimento. Preencha os valores à mão.');
+    $('#n-nome').value=String(r.nome).slice(0,60);$('#n-por').value='100';$('#n-k').value=k;
+    $('#n-p').value=n(r.p100);$('#n-c').value=n(r.c100);$('#n-g').value=n(r.g100);
+    toast('Valores sugeridos. Confira e toque em Salvar alimento',false);
+    $('#n-nome').scrollIntoView({block:'center'});
+  }catch(e){fail(PHOTO_ERR[e&&e.code]||'Não foi possível estimar agora. Tente de novo.')}
+  btn.disabled=false;btn.textContent='Estimar valores';
+}
+function saveFood(){
+  const err=$('#n-err'),nome=$('#n-nome').value.trim();
+  const por=num($('#n-por').value),k=num($('#n-k').value);
+  const p=num($('#n-p').value)||0,c=num($('#n-c').value)||0,g=num($('#n-g').value)||0;
+  const fail=t=>{err.textContent=t;err.hidden=false};
+  if(!nome)return fail('Digite o nome do alimento.');
+  if(!(por>0))return fail('Informe a porção do rótulo em gramas ou ml.');
+  if(!(k>=0))return fail('Informe as calorias da porção.');
+  err.hidden=true;
+  const r=100/por;
+  const f={id:'c_'+uid(),n:nome,c:'meu',k:Math.round(k*r*10)/10,p:Math.round(p*r*10)/10,ch:Math.round(c*r*10)/10,g:Math.round(g*r*10)/10,u:null};
+  snapshot();S.custom.push(f);calcSel={id:f.id,g:por};calcCat='';save();
+  toast(nome+' salvo em Meus alimentos',false);renderCalc();
+}
+
+/* ---------- datas e diário ---------- */
+const DIAS=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
+const pad=n=>String(n).padStart(2,'0');
+const dkey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parseKey=k=>{const p=k.split('-');return new Date(+p[0],+p[1]-1,+p[2])};
+const dayIdx=d=>(d.getDay()+6)%7;
+const todayIdx=()=>dayIdx(new Date());
+const planOf=d=>d===viewDay?S.meals:S.plans[d];
+const weekKeys=(off=0)=>{const n=new Date(),i=dayIdx(n);return DIAS.map((_,j)=>dkey(new Date(n.getFullYear(),n.getMonth(),n.getDate()-i+j+off*7)))};
+const getLog=k=>{const l=S.log[k]||{};return{eaten:l.eaten||{},extra:l.extra||[],water:l.water||0,sweets:l.sweets||0,treino:!!l.treino}};
+function logOf(k){
+  const l=S.log[k]||(S.log[k]={});
+  l.eaten=l.eaten||{};l.extra=l.extra||[];l.water=l.water||0;l.sweets=l.sweets||0;l.treino=!!l.treino;return l;
+}
+const fdate=k=>{const p=k.split('-');return p[2]+'/'+p[1]};
+const back=()=>'<p style="margin:-4px 0 8px"><button class="link" data-tab="mais" style="text-decoration:none">← Mais</button></p>';
+const CK='<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const SWEET_GOAL=3;
+const saudacao=()=>{const h=new Date().getHours();return h<12?'Bom dia':h<18?'Boa tarde':'Boa noite'};
+const tk=()=>S.profile.treinoKcal==null?100:S.profile.treinoKcal;
+
+/* o que foi comido num dia: itens marcados (guardados no momento da marcação) mais os extras */
+function eatenItemsOf(key){
+  const lg=getLog(key),all=planOf(dayIdx(parseKey(key))).flatMap(m=>m.items),out=[];
+  Object.keys(lg.eaten).forEach(id=>{
+    const v=lg.eaten[id];if(!v)return;
+    if(v.f)out.push({id,f:v.f,g:v.g});
+    else{const it=all.find(i=>i.id===id);if(it)out.push(it)}
+  });
+  return out.concat(lg.extra);
+}
+function dayGoal(key){
+  const m=calcMeta(S.profile),extra=getLog(key).treino?tk():0;
+  return{kcal:m.kcal+extra,prot:m.prot,carb:m.carb+Math.round(extra/4),gord:m.gord,extra};
+}
+function streak(){
+  const now=new Date();let n=0;
+  for(let i=0;i<90;i++){
+    const d=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i);
+    if(dayIdx(d)>=5)continue;
+    if(getLog(dkey(d)).treino)n++;
+    else if(i>0)break;
+  }
+  return n;
+}
+function gaugeHTML(val,target,sub){
+  const pct=Math.min(100,val/target*100),over=val>target*1.02;
+  const fill=pct>=0.5?`<path class="fill" d="M 20 100 A 80 80 0 0 1 180 100" pathLength="100" fill="none" stroke="${over?'var(--warn)':'var(--flesh)'}" stroke-width="16" stroke-linecap="round" stroke-dasharray="${pct.toFixed(1)} 100"/>`:'';
+  return`<div class="gauge"><svg viewBox="0 0 200 112" role="img" aria-label="${fmt(val)} de ${fmt(target)} calorias"><path d="M 20 100 A 80 80 0 0 1 180 100" pathLength="100" fill="none" stroke="var(--surface2)" stroke-width="16" stroke-linecap="round"/>${fill}</svg><div class="mid"><b>${fmt(val)}</b><div>${sub}</div></div></div>`;
+}
+function nextMealCard(plan,lg,now){
+  const mins=now.getHours()*60+now.getMinutes();
+  const tm=h=>{const p=String(h).split(':');return (+p[0]||0)*60+(+p[1]||0)};
+  const pend=plan.filter(m=>m.items.length&&!m.items.every(i=>lg.eaten[i.id])).sort((a,b)=>tm(a.hora)-tm(b.hora));
+  if(!pend.length)return`<section class="card nextc"><div class="eyebrow">Agora</div><h2 style="margin-top:4px">Refeições de hoje concluídas</h2><p class="small muted" style="margin-top:6px">Se ainda for comer algo, registre em Fora do cardápio.</p></section>`;
+  const m=pend.find(x=>tm(x.hora)>=mins-60)||pend[0];
+  const late=tm(m.hora)<mins-60,t=sumItems(m.items);
+  const names=m.items.slice(0,3).map(i=>{const f=food(i.f);return f?f.n:''}).filter(Boolean).join(', ')+(m.items.length>3?'…':'');
+  return`<section class="card nextc"><div class="eyebrow">${late?'Pendente de hoje':'Próxima refeição'}</div>
+    <div class="nx-h"><h2>${esc(m.nome)}</h2><span class="nx-t">${esc(m.hora)}</span></div>
+    <p class="small muted">${fmt(t.k)} kcal · ${esc(names)}</p>
+    <button class="btn block" data-act="eatmeal" data-m="${m.id}" style="margin-top:14px">Marcar como comida</button></section>`;
+}
+
+/* ---------- aba Hoje ---------- */
+function renderHoje(){
+  const now=new Date(),key=dkey(now),lg=getLog(key),goal=dayGoal(key),meta=calcMeta(S.profile),plan=planOf(todayIdx());
+  const T=sumItems(eatenItemsOf(key));
+  const left=Math.round(goal.kcal-T.k),leftP=Math.round(goal.prot-T.p);
+  const msg=left>=0?`Faltam ${fmt(left)} kcal${leftP>0?' e '+fmt(leftP)+' g de proteína':''}.`:`Você passou ${fmt(-left)} kcal da meta de hoje.`;
+  const date=now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
+  const cups=Math.max(1,Math.ceil(meta.agua/0.25));
+  const wk=weekKeys().reduce((s,k)=>s+getLog(k).sweets,0);
+  const st=streak(),wkk=weekKeys();
+  const wdots=['S','T','Q','Q','S'].map((l,i)=>`<span class="wd"><i class="${getLog(wkk[i]).treino?'on':''}"></i><small>${l}</small></span>`).join('');
+  const meals=plan.map(m=>{
+    const all=m.items.length&&m.items.every(i=>lg.eaten[i.id]);
+    const t=sumItems(m.items);
+    const rows=m.items.map(it=>{
+      const f=food(it.f);if(!f)return'';
+      const ut=unitText(f,it.g);
+      return`<li><button class="ckrow" data-act="eat" data-ii="${it.id}" aria-pressed="${!!lg.eaten[it.id]}"><span class="box">${CK}</span><span class="ck-n">${esc(f.n)}<small>${fmt(it.g)} g${ut?' · '+ut:''}</small></span><span class="ck-k">${fmt(mac(f,it.g).k)}</span></button></li>`;
+    }).join('');
+    return`<section class="card"><div class="meal-h"><h2 style="flex:1">${esc(m.nome)}</h2>${all?'<span class="done">Feito</span>':''}<span class="muted small">${esc(m.hora)}</span></div>
+      <div class="meal-sum">${fmt(t.k)} kcal planejadas</div>
+      <ul class="items">${rows||'<li class="small muted">Sem alimentos nesta refeição.</li>'}</ul>
+      ${m.items.length?`<button class="link" data-act="eatmeal" data-m="${m.id}" style="margin-top:4px">${all?'Desmarcar refeição':'Marcar refeição inteira'}</button>`:''}</section>`;
+  }).join('');
+  const extras=lg.extra.map(x=>{
+    const f=food(x.f);if(!f)return'';
+    return`<li class="it" data-x="${x.id}"><div class="it-name">${esc(f.n)}</div><div class="it-k">${fmt(mac(f,x.g).k)}<small>kcal</small></div>
+      <div class="it-ctl"><input data-act="xgrams" inputmode="decimal" value="${dv(x.g)}" aria-label="Quantidade de ${esc(f.n)} em gramas"><span class="u">g</span></div>
+      <div class="it-btns"><button class="ib" data-act="delextra" data-x="${x.id}" aria-label="Remover ${esc(f.n)}">${IC.del}</button></div></li>`;
+  }).join('');
+  $('#view').innerHTML=`
+  <p class="eyebrow">${esc(date)}</p>
+  <h2 class="greet">${saudacao()}!</h2>
+  ${storageBanner()}
+  ${nextMealCard(plan,lg,now)}
+  <section class="card">
+    ${gaugeHTML(T.k,goal.kcal,'de '+fmt(goal.kcal)+' kcal comidas')}
+    <p class="center" style="margin-top:12px;font-weight:700">${msg}</p>
+    ${goal.extra?`<p class="center small muted">A meta de hoje inclui +${goal.extra} kcal pelo treino.</p>`:''}
+    <div class="bars">${bar('Proteína',T.p,goal.prot,'var(--p)')}${bar('Carboidrato',T.c,goal.carb,'var(--c)')}${bar('Gordura',T.g,goal.gord,'var(--g)')}</div>
+  </section>
+  <section class="card"><h2>Treino</h2>
+    <div class="wdots" role="img" aria-label="Treinos de segunda a sexta nesta semana">${wdots}</div>
+    <p class="center small muted">${st>0?`Sequência: ${st} ${st===1?'dia':'dias'} de treino seguidos`:'Marque o treino de hoje para começar a sequência.'}</p>
+    <button class="btn block${lg.treino?'':' ghost'}" data-act="treino" aria-pressed="${lg.treino}" style="margin-top:12px">${lg.treino?'Treino feito hoje':'Treinei hoje'}</button>
+  </section>
+  ${meals}
+  <section class="card"><h2>Fora do cardápio</h2>
+    <p class="small muted" style="margin-bottom:6px">Comeu algo que não estava no plano? Registre para a conta fechar.</p>
+    <ul class="items">${extras}</ul>
+    <button class="btn block photo-btn" data-act="photo" style="margin-top:10px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Foto da refeição</button>
+    <button class="btn ghost block" data-act="logfora" style="margin-top:10px">Comi fora de casa</button>
+    <button class="btn ghost block" data-act="logadd" style="margin-top:10px">Comi outra coisa</button>
+  </section>
+  <section class="card"><h2>Água</h2>
+    <div class="water">
+      <button class="ib big" data-act="water-" aria-label="Tirar um copo">−</button>
+      <div class="wv"><b>${lg.water}</b> de ${cups} copos<br><span class="small muted">${fmt(lg.water*0.25,2)} L de ${fmt(meta.agua,1)} L (copo de 250 ml)</span></div>
+      <button class="ib big" data-act="water+" aria-label="Adicionar um copo">+</button>
+    </div>
+    <div class="cups" role="group" aria-label="Copos de água">${Array.from({length:cups},(_,i)=>`<button class="cup${i<lg.water?' on':''}" data-act="cup" data-n="${i+1}" aria-pressed="${i<lg.water}" aria-label="${i+1} copos"></button>`).join('')}</div>
+  </section>
+  <section class="card"><h2>Doces da semana</h2>
+    <div class="dots" role="img" aria-label="${wk} de ${SWEET_GOAL} doces planejados nesta semana">${Array.from({length:SWEET_GOAL},(_,i)=>`<i class="${i<wk?'on':''}"></i>`).join('')}</div>
+    <p class="center small muted">${wk} de ${SWEET_GOAL} doces planejados nesta semana${wk>SWEET_GOAL?'. Passou da meta, volte ao plano nos próximos dias.':wk===SWEET_GOAL?'. Meta da semana completa.':'.'}</p>
+    <button class="btn block" data-act="craving" style="margin:14px 0 4px">Estou com vontade de doce</button>
+    <div class="water" style="margin-top:12px">
+      <button class="ib big" data-act="sweet-" aria-label="Tirar um doce de hoje">−</button>
+      <div class="wv small muted">Hoje: <b style="font-size:24px">${lg.sweets}</b></div>
+      <button class="ib big" data-act="sweet+" aria-label="Contar um doce hoje">+</button>
+    </div>
+  </section>`;
+}
+
+/* ---------- vontade de doce ---------- */
+const SWEET_BASE=[
+  {n:'Chocolate 70% (2 quadradinhos)',ing:[['choco70',20]]},
+  {n:'Brigadeiro (1 unidade)',ing:[['brigadeiro',25]]},
+  {n:'Sorvete de creme (1 bola)',ing:[['sorvete',60]]},
+  {n:'Maçã com pasta de amendoim',ing:[['maca',130],['pasta',10]]}
+];
+let craveList=[];
+function sweetOptions(){
+  const key=dkey(new Date());
+  const left=dayGoal(key).kcal-sumItems(eatenItemsOf(key)).k;
+  const all=RECIPES.filter(r=>r.tipo==='Doce').map(r=>({n:r.nome,ing:r.ing})).concat(SWEET_BASE).map(o=>{
+    const t=sumItems(o.ing.map(([f,g])=>({f,g})));return Object.assign({},o,{k:t.k,p:t.p});
+  });
+  const fit=all.filter(o=>o.k<=Math.max(left,0)).sort((a,b)=>b.p/b.k-a.p/a.k);
+  const rest=all.filter(o=>!fit.includes(o)).sort((a,b)=>a.k-b.k);
+  return{left:Math.round(left),list:fit.concat(rest).slice(0,3)};
+}
+function openInfo(title,html){
+  if(photo){if(photo.ctl)photo.ctl.abort();photo=null}
+  $('#ptitle').textContent=title;$('#pbody').innerHTML=html;openPhoto();
+}
+function openCraving(){
+  const s=sweetOptions();craveList=s.list;
+  const intro=s.left>=150?`Hoje ainda sobram ${fmt(s.left)} kcal. Estas opções cabem na sua meta.`
+    :s.left>0?`Hoje sobram só ${fmt(s.left)} kcal. Estas são as menores opções. Vale esperar 15 minutos e beber um copo de água antes.`
+    :'A meta de hoje já foi atingida. Estas são as menores opções. Você também pode deixar o doce para um dia com folga.';
+  openInfo('Vontade de doce',`<p style="margin-bottom:12px">${intro}</p>`+s.list.map((o,i)=>`<div class="opt"><div><b>${esc(o.n)}</b><span class="small muted">${fmt(o.k)} kcal · ${fmt(o.p,1)} g de proteína</span></div><button class="btn ghost" data-act="crave" data-i="${i}">Comi este</button></div>`).join('')
+    +`<button class="btn ghost block" data-act="pclose" style="margin-top:14px">Fechar</button>`);
+}
+function eatSweet(i){
+  const o=craveList[i];if(!o)return;
+  const lg=logOf(dkey(new Date()));
+  o.ing.forEach(([f,g])=>lg.extra.push({id:uid(),f,g}));lg.sweets+=1;
+  save();closePhoto();toast(o.n+' registrado em Hoje',false);
+  if(curTab()==='hoje')renderHoje();else go('hoje');
+}
+
+/* ---------- aba Progresso ---------- */
+let progMetric='cintura',progSel=null;
+function chartSVG(pts,sel,label){
+  const W=320,H=180,L=42,R=16,T=16,B=28;
+  const ys=pts.map(p=>p.v);let lo=Math.min(...ys),hi=Math.max(...ys);
+  if(hi-lo<1){const m=(hi+lo)/2;lo=m-1;hi=m+1}
+  const pd=(hi-lo)*0.2;lo-=pd;hi+=pd;
+  const t0=pts[0].t,t1=pts[pts.length-1].t;
+  const X=t=>t1===t0?L+(W-L-R)/2:L+(t-t0)/(t1-t0)*(W-L-R);
+  const Y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
+  const grid=[lo,(lo+hi)/2,hi].map(v=>`<line x1="${L}" x2="${W-R}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${(Y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${fmt(v,1)}</text>`).join('');
+  const line=pts.length>1?`<polyline points="${pts.map(p=>X(p.t).toFixed(1)+','+Y(p.v).toFixed(1)).join(' ')}" fill="none" stroke="var(--rind)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`:'';
+  const dots=pts.map((p,i)=>`<circle cx="${X(p.t).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="${i===sel?6:4}" fill="${i===sel?'var(--flesh)':'var(--rind)'}" stroke="var(--surface)" stroke-width="2"/>`).join('');
+  const hits=pts.map((p,i)=>`<circle data-act="pt" data-i="${i}" cx="${X(p.t).toFixed(1)}" cy="${Y(p.v).toFixed(1)}" r="16" fill="transparent" style="cursor:pointer"/>`).join('');
+  const xl=`<text x="${L}" y="${H-8}" font-size="11" fill="var(--muted)">${fdate(pts[0].d)}</text>`+(pts.length>1?`<text x="${W-R}" y="${H-8}" text-anchor="end" font-size="11" fill="var(--muted)">${fdate(pts[pts.length-1].d)}</text>`:'');
+  return`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}${line}${dots}${xl}${hits}</svg>`;
+}
+function renderProg(){
+  const unit=progMetric==='peso'?'kg':'cm',nome=progMetric==='peso'?'Peso':'Cintura';
+  const pts=S.medidas.filter(x=>x[progMetric]!=null).map(x=>({d:x.d,v:x[progMetric],t:Date.parse(x.d+'T12:00:00')}));
+  const sel=progSel!=null&&progSel<pts.length?progSel:pts.length-1;
+  let body;
+  if(!pts.length)body=`<p class="muted" style="padding:10px 0">Nenhuma medida de ${nome.toLowerCase()} ainda. Registre a primeira acima e o gráfico aparece aqui.</p>`;
+  else{
+    const a=pts[0],b=pts[pts.length-1],p=pts[sel],df=b.v-a.v;
+    body=`${chartSVG(pts,sel,'Gráfico de '+nome.toLowerCase()+' ao longo do tempo')}
+    <p class="center" style="font-weight:600">${fdate(p.d)}: ${fmt(p.v,1)} ${unit}</p>
+    <p class="center small muted">${pts.length>1?`Do início até agora: ${fmt(a.v,1)} para ${fmt(b.v,1)} ${unit} (${df>0?'+':''}${fmt(df,1)} ${unit})`:'Registre mais uma medida para ver a linha.'}</p>`;
+  }
+  const last=S.medidas[S.medidas.length-1];
+  const next=last?dkey(new Date(Date.parse(last.d+'T12:00:00')+14*864e5)):'';
+  const rows=S.medidas.slice().reverse().map(x=>`<span>${fdate(x.d)}</span><span>${x.peso!=null?fmt(x.peso,1)+' kg':'-'}</span><span>${x.cintura!=null?fmt(x.cintura,1)+' cm':'-'}</span><button class="link danger" data-act="delmed" data-d="${x.d}" aria-label="Excluir medida de ${fdate(x.d)}">Excluir</button>`).join('');
+  $('#view').innerHTML=`
+  <section class="card"><h2>Registrar medidas</h2>
+    <div class="grid2">
+      <label class="f full">Data<input id="m-data" type="date" value="${dkey(new Date())}"></label>
+      <label class="f">Peso (kg)<input id="m-peso" inputmode="decimal" value="${dv(S.profile.peso)}"></label>
+      <label class="f">Cintura (cm)<input id="m-cint" inputmode="decimal" placeholder="Ex.: 92"></label>
+    </div>
+    <p class="small muted" style="margin-top:10px">Meça a cintura na altura do umbigo, de manhã, em jejum. Pese-se 2 a 3 vezes por semana, porque a média da semana é mais confiável que um dia só. Cintura a cada 2 semanas. Ao salvar um peso novo, a meta de calorias é recalculada.</p>
+    <p class="hint" id="m-err" hidden style="margin-top:8px"></p>
+    <button class="btn block" data-act="savemed" style="margin-top:12px">Salvar medida</button>
+  </section>
+  <section class="card"><h2>Evolução</h2>
+    <div class="chips"><button class="chip" data-act="mtype" data-k="cintura" aria-pressed="${progMetric==='cintura'}">Cintura</button><button class="chip" data-act="mtype" data-k="peso" aria-pressed="${progMetric==='peso'}">Peso</button></div>
+    ${body}
+    ${progMetric==='peso'?avgPeso():''}
+    ${next?`<p class="small muted center" style="margin-top:8px">Próxima medida sugerida: ${fdate(next)}</p>`:''}
+  </section>
+  ${S.medidas.length?`<section class="card"><h2>Histórico</h2><div class="hist">${rows}</div></section>`:''}`;
+}
+function avgPeso(){
+  const ps=S.medidas.filter(x=>x.peso!=null);if(!ps.length)return'';
+  const end=Date.parse(ps[ps.length-1].d+'T12:00:00'),win=ps.filter(x=>Date.parse(x.d+'T12:00:00')>end-7*864e5);
+  const avg=win.reduce((s,x)=>s+x.peso,0)/win.length;
+  return`<p class="center small" style="margin-top:6px"><b>Peso médio dos últimos 7 dias: ${fmt(avg,1)} kg</b> (${win.length} ${win.length===1?'pesagem':'pesagens'})</p>`;
+}
+function saveMed(){
+  const err=$('#m-err'),d=$('#m-data').value||dkey(new Date());
+  const rp=$('#m-peso').value.trim(),rc=$('#m-cint').value.trim();
+  const p=num(rp),c=num(rc),okP=p>=35&&p<=250,okC=c>=40&&c<=200;
+  const fail=t=>{err.textContent=t;err.hidden=false};
+  if(!rp&&!rc)return fail('Informe o peso ou a cintura.');
+  if((rp&&!okP)||(rc&&!okC))return fail('Confira os valores. Peso entre 35 e 250 kg, cintura entre 40 e 200 cm.');
+  let e=S.medidas.find(x=>x.d===d);
+  if(!e){e={d};S.medidas.push(e)}
+  if(okP)e.peso=p;
+  if(okC)e.cintura=c;
+  S.medidas.sort((a,b)=>a.d<b.d?-1:1);
+  let msg='Medida salva';
+  const lastP=S.medidas.filter(x=>x.peso!=null).pop();
+  if(okP&&lastP&&lastP.d===d&&S.profile.peso!==p){S.profile.peso=p;msg='Medida salva. Meta recalculada: '+fmt(calcMeta(S.profile).kcal)+' kcal'}
+  save();progSel=null;renderProg();toast(msg,false);
+}
+
+/* ---------- Mais, Compras, Receitas ---------- */
+function renderMais(){
+  $('#view').innerHTML=`
+  <button class="navcard" data-tab="meta"><span><b>Meta e dados</b><span>Calorias, proteína e água por dia.</span></span>›</button>
+  <button class="navcard" data-tab="compras"><span><b>Lista de compras</b><span>Tudo o que o cardápio da semana pede.</span></span>›</button>
+  <button class="navcard" data-tab="semana"><span><b>Resumo da semana</b><span>Médias, dias na meta e texto para enviar.</span></span>›</button>
+  <button class="navcard" data-tab="backup"><span><b>Backup dos dados</b><span>Salvar e restaurar tudo.</span></span>›</button>
+  <button class="navcard" data-tab="receitas"><span><b>Receitas leves</b><span>Doces e salgados com as calorias calculadas.</span></span>›</button>
+  <section class="card"><h2>Salvamento</h2><p class="small ${storageNote().ok?'':'muted'}">${esc(storageNote().t)}</p>${photo_hint()}<p class="small muted" style="margin-top:8px">${SA?'':'Detalhe: '+esc(cloudWhy||'-')+' · aberturas neste aparelho: '+visits()}</p></section>`;
+}
+function visits(){try{return localStorage.getItem('meuprato.visits')||'?'}catch(e){return 'storage bloqueado'}}
+function photo_hint(){return SA?'':(document.body.classList.contains('photo-yes')?'':'<p class="small muted" style="margin-top:8px">A foto da refeição e a estimativa pelo nome só funcionam quando o link é aberto logada numa conta do Claude.</p>')}
+function shopEntries(){
+  const tot={};
+  for(let d=0;d<7;d++)planOf(d).forEach(m=>m.items.forEach(i=>{tot[i.f]=(tot[i.f]||0)+i.g}));
+  return Object.keys(tot).map(id=>{
+    const f=food(id);if(!f)return null;
+    const g=tot[id],buy=BUY[id];
+    const main=buy?'≈ '+fmt(Math.ceil(g*buy/10)*10)+' g cru':fmt(Math.round(g/5)*5)+' g';
+    const ut=unitText(f,g);
+    const sub=buy?'pronto: '+fmt(Math.round(g/5)*5)+' g':ut;
+    return{id,f,main,sub};
+  }).filter(Boolean).sort((a,b)=>a.f.n.localeCompare(b.f.n,'pt-BR'));
+}
+function renderShop(){
+  const list=shopEntries();
+  const groups=Object.keys(CATS).map(c=>{
+    const items=list.filter(e=>e.f.c===c);
+    if(!items.length)return'';
+    return`<h3 class="shop-h">${CATS[c]}</h3>`+items.map(e=>`<li><button class="ckrow" data-act="shop" data-food="${e.id}" aria-pressed="${!!S.shop[e.id]}"><span class="box">${CK}</span><span class="ck-n">${esc(e.f.n)}${e.sub?`<small>${esc(e.sub)}</small>`:''}</span><span class="ck-k">${e.main}</span></button></li>`).join('');
+  }).join('');
+  $('#view').innerHTML=`${back()}
+  <section class="card"><h2>Lista de compras da semana</h2>
+    <p class="small muted">Soma dos 7 dias do cardápio. Arroz, feijão e carnes aparecem no peso cru, porque o cardápio usa o peso já cozido. Compre um pouco a mais para garantir.</p>
+    <div class="grid2" style="margin-top:12px"><button class="btn ghost" data-act="shopcopy">Copiar lista</button><button class="btn ghost" data-act="shopclear">Desmarcar tudo</button></div>
+    <ul class="items" style="margin-top:6px">${groups}</ul>
+  </section>`;
+}
+function copyShop(){
+  const txt='Lista de compras da semana\n'+shopEntries().map(e=>e.f.n+': '+e.main).join('\n');
+  try{navigator.clipboard.writeText(txt).then(()=>toast('Lista copiada',false)).catch(()=>toast('Não foi possível copiar neste aparelho',false))}
+  catch(e){toast('Não foi possível copiar neste aparelho',false)}
+}
+const recMac=r=>sumItems(r.ing.map(([f,g])=>({f,g})));
+function renderRec(){
+  $('#view').innerHTML=`${back()}
+  <section class="card"><h2>Receitas leves</h2>
+    <p class="small muted" style="margin-bottom:6px">Calorias e macros calculados pelas quantidades. Toque numa receita para abrir.</p>
+    ${RECIPES.map(r=>{
+      const t=recMac(r);
+      return`<details class="rec"><summary><span><b>${esc(r.nome)}</b><br><span class="small muted">${r.tipo} · ${r.tempo}</span></span><span class="ck-k">${fmt(t.k)} kcal</span></summary>
+      <div class="res"><div><b>${fmt(t.k)}</b><span>kcal</span></div><div><b>${fmt(t.p,1)}</b><span>Prot. g</span></div><div><b>${fmt(t.c,1)}</b><span>Carb. g</span></div><div><b>${fmt(t.g,1)}</b><span>Gord. g</span></div></div>
+      <ul class="list">${r.ing.map(([id,g])=>{const f=food(id),u=unitText(f,g);return`<li><span>${esc(f.n)}</span><b>${fmt(g)} g${u?' · '+u:''}</b></li>`}).join('')}</ul>
+      <ol class="tips" style="margin:12px 0">${r.passos.map(p=>`<li>${esc(p)}</li>`).join('')}</ol>
+      <label class="f">Adicionar ao cardápio de ${DIAS[viewDay].toLowerCase()} em<select id="rs-${r.id}">${S.meals.map(m=>`<option value="${m.id}">${esc(m.nome)}</option>`).join('')}</select></label>
+      <button class="btn block" data-act="recadd" data-r="${r.id}" style="margin:12px 0 14px">Adicionar ao cardápio</button></details>`;
+    }).join('')}
+  </section>`;
+}
+function addRecipe(rid){
+  const r=RECIPES.find(x=>x.id===rid),sel=$('#rs-'+rid);if(!r||!sel)return;
+  const m=S.meals.find(x=>x.id===sel.value);if(!m)return;
+  snapshot();r.ing.forEach(([f,g])=>m.items.push({id:uid(),f,g}));save();
+  toast(r.nome+' adicionada a '+m.nome,true);
+}
+
+/* ---------- ações das novas telas ---------- */
+function featureClick(a,t){
+  if(photoClick(a,t))return true;
+  if(weekClickHandlers(a,t))return true;
+  const key=dkey(new Date());
+  if(a==='day'){S.plans[viewDay]=S.meals;viewDay=+t.dataset.d;S.meals=S.plans[viewDay];renderCard();return true}
+  if(a==='fitall'){
+    snapshot();const meta=calcMeta(S.profile);
+    S.plans[viewDay]=S.meals;
+    S.plans.forEach(p=>{const k=planTotals(p).k;if(k)scalePlan(p,meta.kcal/k)});
+    S.meals=S.plans[viewDay];save();toast('Semana ajustada para '+fmt(meta.kcal)+' kcal por dia',true);go('cardapio');return true;
+  }
+  if(a==='eat'){const lg=logOf(key),id=t.dataset.ii;if(lg.eaten[id])delete lg.eaten[id];else{const it=planOf(todayIdx()).flatMap(m=>m.items).find(i=>i.id===id);if(it)lg.eaten[id]={f:it.f,g:it.g}}save();renderHoje();return true}
+  if(a==='eatmeal'){
+    const lg=logOf(key),m=planOf(todayIdx()).find(x=>x.id===t.dataset.m);if(!m)return true;
+    const all=m.items.every(i=>lg.eaten[i.id]);
+    m.items.forEach(i=>{if(all)delete lg.eaten[i.id];else lg.eaten[i.id]={f:i.f,g:i.g}});save();renderHoje();return true;
+  }
+  if(a==='logadd'){openSheet({mode:'log'});return true}
+  if(a==='delextra'){const lg=logOf(key);lg.extra=lg.extra.filter(x=>x.id!==t.dataset.x);save();renderHoje();return true}
+  if(a==='cup'){const lg=logOf(key),n=+t.dataset.n;lg.water=lg.water===n?n-1:n;save();renderHoje();return true}
+  if(a==='water+'||a==='water-'){const lg=logOf(key);lg.water=Math.max(0,Math.min(30,lg.water+(a==='water+'?1:-1)));save();renderHoje();return true}
+  if(a==='sweet+'||a==='sweet-'){const lg=logOf(key);lg.sweets=Math.max(0,Math.min(20,lg.sweets+(a==='sweet+'?1:-1)));save();renderHoje();return true}
+  if(a==='bannerx'){bannerOff=true;renderHoje();return true}
+  if(a==='estimate'){estimateFood();return true}
+  if(a==='mtype'){progMetric=t.dataset.k;progSel=null;renderProg();return true}
+  if(a==='pt'){progSel=+t.dataset.i;renderProg();return true}
+  if(a==='savemed'){saveMed();return true}
+  if(a==='delmed'){S.medidas=S.medidas.filter(x=>x.d!==t.dataset.d);save();renderProg();toast('Medida excluída',false);return true}
+  if(a==='shop'){const id=t.dataset.food;if(S.shop[id])delete S.shop[id];else S.shop[id]=true;save();renderShop();return true}
+  if(a==='shopclear'){S.shop={};save();renderShop();return true}
+  if(a==='shopcopy'){copyShop();return true}
+  if(a==='recadd'){addRecipe(t.dataset.r);return true}
+  if(a==='logcalc'){
+    const f=calcSel&&food(calcSel.id);
+    if(!f||!(calcSel.g>0)){toast('Informe a quantidade',false);return true}
+    logOf(key).extra.push({id:uid(),f:f.id,g:calcSel.g});save();toast(f.n+' registrado em Hoje',false);return true;
+  }
+  return false;
+}
+function featureChange(t,a){
+  if(photoChange(t,a))return true;
+  if(a==='impfile'){readImport(t.files&&t.files[0]);t.value='';return true}
+  if(a==='xgrams'){
+    const li=t.closest('[data-x]'),lg=logOf(dkey(new Date()));
+    const x=li&&lg.extra.find(e=>e.id===li.dataset.x),n=num(t.value);
+    if(x&&n>0&&n<=3000){x.g=Math.round(n*10)/10;save()}
+    renderHoje();return true;
+  }
+  return false;
+}
+
+/* ---------- Resumo da semana ---------- */
+let weekOff=0,weekDl=null;
+function weekStats(off){
+  const keys=weekKeys(off),today=dkey(new Date());
+  const days=keys.map((k,i)=>{
+    const lg=getLog(k),T=sumItems(eatenItemsOf(k)),g=dayGoal(k);
+    return{k,i,kcal:T.k,goal:g.kcal,water:lg.water,sweets:lg.sweets,treino:lg.treino,logged:T.k>0,future:k>today};
+  });
+  const lg=days.filter(d=>d.logged);
+  const ok=lg.filter(d=>d.kcal>=d.goal*0.9&&d.kcal<=d.goal*1.05).length;
+  const avg=lg.length?lg.reduce((s,d)=>s+d.kcal,0)/lg.length:0;
+  const meta=calcMeta(S.profile),cups=Math.max(1,Math.ceil(meta.agua/0.25));
+  const waterAvg=lg.length?lg.reduce((s,d)=>s+d.water,0)/lg.length:0;
+  const ws=S.medidas.filter(x=>x.peso!=null&&x.d<=keys[6]).pop();
+  return{keys,days,lg:lg.length,ok,avg,cups,waterAvg,treinos:days.filter(d=>d.treino).length,
+    sweets:days.reduce((s,d)=>s+d.sweets,0),peso:ws?ws.peso:null,pesoD:ws?ws.d:null};
+}
+function weekText(off){
+  const s=weekStats(off);
+  const L=['Resumo da semana '+fdate(s.keys[0])+' a '+fdate(s.keys[6]),''];
+  if(!s.lg)L.push('Nenhum dia registrado.');
+  else{
+    L.push('Dias registrados: '+s.lg+' de 7');
+    L.push('Média: '+fmt(s.avg)+' kcal por dia');
+    L.push('Dias dentro da meta: '+s.ok+' de '+s.lg);
+    L.push('Água: média de '+fmt(s.waterAvg,1)+' de '+s.cups+' copos');
+  }
+  L.push('Treinos: '+s.treinos);
+  L.push('Doces: '+s.sweets+' (meta '+SWEET_GOAL+')');
+  if(s.peso!=null)L.push('Último peso: '+fmt(s.peso,1)+' kg ('+fdate(s.pesoD)+')');
+  return L.join('\n');
+}
+function weekChart(s){
+  const W=320,H=170,L=34,R=10,T=14,B=26,top=Math.max(...s.days.map(d=>Math.max(d.kcal,d.goal)))*1.1;
+  const Y=v=>T+(1-v/top)*(H-T-B),bw=(W-L-R)/7;
+  const bars=s.days.map((d,i)=>{
+    const x=L+i*bw+bw*0.18,w=bw*0.64,h=Math.max(0,H-B-Y(d.kcal));
+    const fill=d.kcal>d.goal*1.05?'var(--warn)':'var(--flesh)';
+    return(d.kcal>0?`<rect x="${x.toFixed(1)}" y="${Y(d.kcal).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="4" fill="${fill}"/>`:'')
+      +`<text x="${(x+w/2).toFixed(1)}" y="${H-8}" text-anchor="middle" font-size="11" fill="var(--muted)">${DIAS[i][0]}</text>`;
+  }).join('');
+  const g=s.days[0].goal;
+  return`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Calorias comidas por dia, com a linha da meta"><line x1="${L}" x2="${W-R}" y1="${Y(g).toFixed(1)}" y2="${Y(g).toFixed(1)}" stroke="var(--rind)" stroke-width="1.5" stroke-dasharray="4 4"/><text x="${L-4}" y="${(Y(g)+4).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">meta</text>${bars}</svg>`;
+}
+function renderSemana(){
+  const s=weekStats(weekOff);
+  const stat=(b,l)=>`<div><b>${b}</b><span>${l}</span></div>`;
+  $('#view').innerHTML=back()+`
+  <section class="card"><h2>Resumo da semana</h2>
+    <div class="weeknav"><button class="ib" data-act="wk-" aria-label="Semana anterior">‹</button><span>${fdate(s.keys[0])} a ${fdate(s.keys[6])}${weekOff===0?' (esta semana)':''}</span><button class="ib" data-act="wk+" aria-label="Próxima semana"${weekOff>=0?' disabled':''}>›</button></div>
+    ${s.lg?weekChart(s):'<p class="muted center" style="padding:14px 0">Nenhum dia registrado nesta semana. Marque o que comeu na aba Hoje.</p>'}
+    <div class="res" style="margin-top:12px">${stat(s.lg?fmt(s.avg):'-','kcal por dia')}${stat(s.ok+' de '+s.lg,'na meta')}${stat(s.lg?fmt(s.waterAvg,1):'-','copos por dia')}${stat(s.treinos,'treinos')}</div>
+    <p class="center small muted" style="margin-top:10px">Doces: ${s.sweets} (meta ${SWEET_GOAL})${s.peso!=null?' · Último peso: '+fmt(s.peso,1)+' kg':''}</p>
+  </section>
+  <section class="card"><h2>Enviar no WhatsApp</h2>
+    <textarea id="weektxt" class="txt" readonly rows="8" aria-label="Texto do resumo">${esc(weekText(weekOff))}</textarea>
+    <button class="btn block" data-act="weekcopy" style="margin-top:12px">Copiar resumo</button>
+  </section>`;
+}
+async function copyText(txt,okMsg){
+  try{await navigator.clipboard.writeText(txt);toast(okMsg,false)}
+  catch(e){const ta=document.querySelector('textarea.txt');if(ta){ta.focus();ta.select()}toast('Selecione o texto e copie',false)}
+}
+
+/* ---------- Backup ---------- */
+let dlFn=null,impPending=null;
+function initDownloads(){
+  try{if(window.claude&&window.claude.use)window.claude.use('downloads').then(d=>{dlFn=d;if($('#bkSave'))$('#bkSave').hidden=!d}).catch(()=>{})}catch(e){}
+}
+function backupData(){const o=Object.assign({},S);S.plans[viewDay]=S.meals;delete o.meals;o.plans=S.plans;return JSON.stringify({app:'meuprato',v:1,data:o})}
+function renderBackup(){
+  impPending=null;
+  $('#view').innerHTML=back()+`
+  <section class="card"><h2>Salvar uma cópia</h2>
+    <p class="small muted">Guarda seu cardápio, diário e medidas. Use antes de trocar de celular ou limpar o Safari.</p>
+    <button class="btn block" id="bkSave" data-act="bkexport" style="margin-top:12px"${dlFn?'':' hidden'}>Baixar arquivo de backup</button>
+    <button class="btn ghost block" data-act="bkcopy" style="margin-top:10px">Copiar backup</button>
+    <p class="small muted" style="margin-top:8px">Copie e cole numa conversa ou nota. Para voltar, cole aqui embaixo.</p>
+  </section>
+  <section class="card"><h2>Restaurar uma cópia</h2>
+    <textarea id="impTxt" class="txt" rows="5" placeholder="Cole aqui o backup" aria-label="Texto do backup"></textarea>
+    <input type="file" id="impFile" data-act="impfile" accept=".json,.txt,application/json,text/plain" style="margin-top:10px;max-width:100%">
+    <p class="hint" id="impErr" hidden style="margin-top:8px"></p>
+    <button class="btn block" id="impBtn" data-act="bkimport" style="margin-top:12px">Restaurar</button>
+  </section>`;
+}
+function bkImport(){
+  const err=$('#impErr'),btn=$('#impBtn'),fail=t=>{err.textContent=t;err.hidden=false;impPending=null;btn.textContent='Restaurar'};
+  if(impPending){
+    S=impPending;impPending=null;viewDay=todayIdx();S.meals=S.plans[viewDay];save();
+    toast('Backup restaurado',false);go('hoje');return;
+  }
+  let o;try{o=JSON.parse($('#impTxt').value.trim())}catch(e){return fail('Esse texto não é um backup válido.')}
+  o=o&&o.app==='meuprato'?o.data:o;
+  const ok=o&&o.profile&&Array.isArray(o.plans)&&o.plans.length===7&&o.plans.every(Array.isArray)&&typeof o.profile.peso==='number';
+  if(!ok)return fail('Esse texto não é um backup do Meu Prato.');
+  delete o.meals;impPending=Object.assign({custom:[],log:{},medidas:[],shop:{}},o);
+  err.hidden=true;btn.textContent='Confirmar: substituir meus dados atuais';
+}
+function weekClickHandlers(a,t){
+  if(a==='wk-'){weekOff--;renderSemana();return true}
+  if(a==='wk+'){if(weekOff<0){weekOff++;renderSemana()}return true}
+  if(a==='weekcopy'){copyText(weekText(weekOff),'Resumo copiado');return true}
+  if(a==='bkcopy'){copyText(backupData(),'Backup copiado');return true}
+  if(a==='bkexport'){
+    if(dlFn)dlFn.save({filename:'meu-prato-backup-'+dkey(new Date())+'.json',data:backupData()}).then(()=>toast('Backup salvo',false)).catch(()=>toast('Não foi possível salvar o arquivo',false));
+    return true;
+  }
+  if(a==='bkimport'){bkImport();return true}
+  if(a==='craving'){openCraving();return true}
+  if(a==='crave'){eatSweet(+t.dataset.i);return true}
+  if(a==='treino'){const lg=logOf(dkey(new Date()));lg.treino=!lg.treino;save();renderHoje();return true}
+  if(a==='logfora'){openSheet({mode:'log',cat:'fora'});return true}
+  return false;
+}
+function readImport(f){
+  if(!f)return;const r=new FileReader();
+  r.onload=()=>{$('#impTxt').value=String(r.result||'').slice(0,5e6)};
+  r.readAsText(f);
+}
+
+/* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
+let sampleFn=null,photo=null;
+const PHOTO_HIDE=['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','images_unavailable'];
+function setPhoto(ok){document.body.classList.remove('photo-yes','photo-no');document.body.classList.add(ok?'photo-yes':'photo-no')}
+function initSample(){
+  try{
+    if(!window.claude||!window.claude.use){setPhoto(false);return}
+    window.claude.use('sample').then(async s=>{
+      if(!s){setPhoto(false);return}
+      sampleFn=s;
+      let ok=false;
+      try{const l=await s.limits();ok=!!(l&&l.images)}catch(e){}
+      setPhoto(ok);
+    }).catch(()=>setPhoto(false));
+  }catch(e){setPhoto(false)}
+}
+function bindPhoto(){
+  $('#photoIn').addEventListener('change',e=>{
+    const f=e.target.files&&e.target.files[0];e.target.value='';
+    if(f)photoStart(f);
+  });
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#psheet').hidden)closePhoto()});
+}
+function toJpeg(file,max=1280){
+  return new Promise((res,rej)=>{
+    const url=URL.createObjectURL(file),img=new Image();
+    img.onload=()=>{
+      const k=Math.min(1,max/Math.max(img.width,img.height));
+      const c=document.createElement('canvas');
+      c.width=Math.max(1,Math.round(img.width*k));c.height=Math.max(1,Math.round(img.height*k));
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(b=>b?res(b):rej(new Error('blob')),'image/jpeg',0.82);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('img'))};
+    img.src=url;
+  });
+}
+function photoPrompt(){
+  const list=allFoods().map(f=>f.id+'='+f.n).join('; ');
+  return'Você é um assistente de nutrição. A imagem mostra uma refeição ou um alimento. '
+   +'Identifique cada alimento visível e estime a quantidade em gramas, no peso pronto para comer, pelo tamanho da porção em relação ao prato e aos talheres. '
+   +'Se o alimento existir nesta lista, use o id da lista: '+list+'. '
+   +'Se não existir, use "id": null e informe os valores aproximados por 100 g (kcal100, p100 proteína, c100 carboidrato, g100 gordura). '
+   +'Inclua óleo, molho ou queijo apenas se forem visíveis. No máximo 10 itens. '
+   +'Responda somente com JSON neste formato: {"itens":[{"id":"arroz","nome":"Arroz branco","g":120,"kcal100":0,"p100":0,"c100":0,"g100":0}],"obs":"frase curta sobre incertezas, opcional"}. '
+   +'Se a imagem não mostrar comida, responda {"itens":[],"obs":"motivo"}.';
+}
+const perOf=it=>{const f=it.id&&food(it.id);return f?{k:f.k,p:f.p,c:f.ch,g:f.g}:it.per};
+function parsePhoto(r){
+  const arr=Array.isArray(r)?r:(r&&Array.isArray(r.itens)?r.itens:[]);
+  const items=arr.slice(0,10).map(x=>{
+    if(!x||typeof x!=='object')return null;
+    const id=typeof x.id==='string'&&food(x.id)?x.id:null;
+    let g=num(x.g);if(!(g>0))g=100;g=Math.min(3000,Math.round(g/5)*5||5);
+    const n0=v=>{v=Number(v);return isFinite(v)&&v>0?v:0};
+    const per={k:n0(x.kcal100),p:n0(x.p100),c:n0(x.c100),g:n0(x.g100)};
+    if(!(per.k>0))per.k=4*per.p+4*per.c+9*per.g;
+    per.k=Math.min(per.k,900);
+    return{id,nome:String(x.nome||(id&&food(id).n)||'Alimento').slice(0,60),g,per};
+  }).filter(Boolean);
+  return{items,obs:r&&typeof r.obs==='string'?r.obs.slice(0,200):''};
+}
+function openPhoto(){$('#psheet').hidden=false;document.body.classList.add('lock')}
+function closePhoto(){
+  if(photo&&photo.ctl)photo.ctl.abort();
+  if(photo&&photo.thumb)URL.revokeObjectURL(photo.thumb);
+  photo=null;$('#psheet').hidden=true;document.body.classList.remove('lock');
+}
+const PHOTO_ERR={
+  not_granted:'Para analisar a foto, permita que o app use o Claude quando o aviso aparecer.',
+  sampling_disabled:'O Claude não está disponível nesta conta.',
+  session_expired:'Entre de novo na sua conta do Claude e tente outra vez.',
+  rate_limited:'Muitas análises seguidas ou limite de uso do Claude atingido. Tente mais tarde.',
+  image_rejected:'Não consegui ler essa foto. Tente outra.',
+  refused:'Não foi possível analisar essa foto. Tente outra.',
+  invalid_json:'Não consegui entender a foto. Tente outra, mais perto do prato.',
+  empty_completion:'Não consegui entender a foto. Tente outra, mais perto do prato.'
+};
+async function photoStart(file){
+  if(!sampleFn)return;
+  if(photo)closePhoto();
+  const me=photo={ctl:new AbortController(),state:'load',items:[],obs:'',thumb:null,err:''};
+  openPhoto();drawPhoto();
+  try{
+    const blob=await toJpeg(file);
+    if(photo!==me)return;
+    me.thumb=URL.createObjectURL(blob);drawPhoto();
+    const r=await sampleFn.json(photoPrompt(),{images:[blob],modelTier:'default',signal:me.ctl.signal});
+    if(photo!==me)return;
+    const p=parsePhoto(r);me.items=p.items;me.obs=p.obs;me.state='ok';
+  }catch(e){
+    if(photo!==me||(e&&e.code==='cancelled'))return;
+    me.state='err';
+    me.err=PHOTO_ERR[e&&e.code]||(e&&e.code?'Não foi possível analisar agora. Tente de novo.':'Não consegui abrir essa foto. Tente outra.');
+    if(e&&PHOTO_HIDE.includes(e.code))setPhoto(false);
+  }
+  drawPhoto();
+}
+function drawPhoto(){
+  const el=$('#pbody');if(!el||!photo)return;
+  const thumb=photo.thumb?`<img class="thumb" src="${photo.thumb}" alt="Foto da refeição">`:'';
+  if(photo.state==='load'){
+    el.innerHTML=`${thumb}<div class="spin" role="status" aria-label="Analisando"></div><p class="center">Analisando a foto. Pode levar até 1 minuto.</p>
+      <button class="btn ghost block" data-act="pclose" style="margin-top:14px">Cancelar</button>`;return;
+  }
+  if(photo.state==='err'){
+    el.innerHTML=`${thumb}<p style="margin:6px 0 14px">${esc(photo.err)}</p>
+      <button class="btn block" data-act="photo">Escolher outra foto</button>
+      <button class="btn ghost block" data-act="pclose" style="margin-top:10px">Fechar</button>`;return;
+  }
+  const tot={k:0,p:0,c:0,g:0};
+  photo.items.forEach(it=>{const p=perOf(it),r=it.g/100;tot.k+=p.k*r;tot.p+=p.p*r;tot.c+=p.c*r;tot.g+=p.g*r});
+  const rows=photo.items.map((it,i)=>{
+    const p=perOf(it),f=it.id&&food(it.id),ut=f?unitText(f,it.g):'';
+    return`<li class="it" data-p="${i}"><div class="it-name">${esc(f?f.n:it.nome)}${f?'':'<span class="mine">ESTIMADO</span>'}</div><div class="it-k">${fmt(p.k*it.g/100)}<small>kcal</small></div>
+      <div class="it-ctl"><input data-act="pgrams" inputmode="decimal" value="${dv(it.g)}" aria-label="Quantidade de ${esc(it.nome)} em gramas"><span class="u">g${ut?' · '+ut:''}</span></div>
+      <div class="it-btns"><button class="ib" data-act="pdel" data-p="${i}" aria-label="Remover ${esc(it.nome)}">${IC.del}</button></div></li>`;
+  }).join('');
+  el.innerHTML=`${thumb}
+    ${photo.items.length?`<ul class="items">${rows}</ul>
+    <div class="res"><div><b>${fmt(tot.k)}</b><span>kcal</span></div><div><b>${fmt(tot.p,1)}</b><span>Prot. g</span></div><div><b>${fmt(tot.c,1)}</b><span>Carb. g</span></div><div><b>${fmt(tot.g,1)}</b><span>Gord. g</span></div></div>`
+    :`<p style="margin:6px 0 14px">Não encontrei alimentos nessa foto.${photo.obs?' '+esc(photo.obs):''}</p>`}
+    ${photo.items.length&&photo.obs?`<p class="small muted">${esc(photo.obs)}</p>`:''}
+    ${photo.items.length?`<p class="small muted" style="margin:8px 0 12px">Estimativa feita pela foto. Corrija as quantidades se precisar, principalmente óleo, molhos e pratos fundos.</p>
+    <button class="btn block" data-act="pregister">Registrar em Hoje</button>`:`<button class="btn block" data-act="photo">Escolher outra foto</button>`}
+    <button class="btn ghost block" data-act="pclose" style="margin-top:10px">Fechar</button>`;
+}
+function registerPhoto(){
+  if(!photo||!photo.items.length)return;
+  const lg=logOf(dkey(new Date()));
+  photo.items.forEach(it=>{
+    let id=it.id&&food(it.id)?it.id:null;
+    if(!id){
+      const ex=S.custom.find(f=>norm(f.n)===norm(it.nome));
+      if(ex)id=ex.id;
+      else{
+        const r1=v=>Math.round(v*10)/10,p=it.per;
+        const f={id:'c_'+uid(),n:it.nome,c:'meu',k:r1(p.k),p:r1(p.p),ch:r1(p.c),g:r1(p.g),u:null};
+        S.custom.push(f);id=f.id;
+      }
+    }
+    lg.extra.push({id:uid(),f:id,g:it.g});
+  });
+  save();closePhoto();toast('Refeição registrada em Hoje',false);go('hoje');
+}
+function photoClick(a,t){
+  if(a==='photo'){if(sampleFn)$('#photoIn').click();return true}
+  if(a==='pclose'){closePhoto();return true}
+  if(a==='pdel'){if(photo){photo.items.splice(+t.dataset.p,1);drawPhoto()}return true}
+  if(a==='pregister'){registerPhoto();return true}
+  return false;
+}
+function photoChange(t,a){
+  if(a!=='pgrams')return false;
+  const li=t.closest('[data-p]'),it=photo&&li&&photo.items[+li.dataset.p],n=num(t.value);
+  if(it&&n>0&&n<=3000)it.g=Math.round(n*10)/10;
+  drawPhoto();return true;
+}
+
+/* ---------- navegação e eventos ---------- */
+const TABS=['hoje','cardapio','calcular','progresso','mais','meta','compras','receitas','semana','backup'];
+const TABOF={meta:'mais',compras:'mais',receitas:'mais',semana:'mais',backup:'mais'};
+const curTab=()=>{const h=location.hash.slice(1);return TABS.includes(h)?h:'hoje'};
+function render(){
+  const t=curTab();
+  document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===(TABOF[t]||t)?'page':'false'));
+  ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup})[t]();
+}
+function go(t){
+  if(location.hash==='#'+t){render();window.scrollTo(0,0)}else location.hash='#'+t;
+}
+window.addEventListener('hashchange',()=>{closeSheet();render();window.scrollTo(0,0)});
+
+document.addEventListener('click',e=>{
+  const tabBtn=e.target.closest('[data-tab]');
+  if(tabBtn){go(tabBtn.dataset.tab);return}
+  if(e.target.closest('#toast-act')){undo();return}
+  const t=e.target.closest('[data-act]');if(!t)return;
+  const a=t.dataset.act;
+  if(featureClick(a,t))return;
+  if(a==='closesheet'){closeSheet();return}
+  if(a==='cat'){
+    if(t.closest('#sheet')){sheetCat=t.dataset.cat;refreshSheet()}else{calcCat=t.dataset.cat;refreshCalcList()}
+    return;
+  }
+  if(a==='pick'){
+    if(sheetCtx){pickFood(t.dataset.food);return}
+    const f=food(t.dataset.food);if(!f)return;
+    calcSel={id:f.id,g:f.u?f.u.g:100};refreshCalcList();drawDetail();
+    $('#calc-detail').scrollIntoView({block:'start'});
+    return;
+  }
+  if(a==='swap'){
+    const{m,it}=findItem(t);if(!it)return;
+    openSheet({mode:'swap',m:m.id,i:it.id,exclude:it.f,cat:(food(it.f)||{}).c||''});return;
+  }
+  if(a==='del'){
+    const{m,it}=findItem(t);if(!it)return;
+    const f=food(it.f);snapshot();m.items=m.items.filter(x=>x.id!==it.id);save();render();
+    toast('Removido: '+(f?f.n:'alimento'),true);return;
+  }
+  if(a==='add'){openSheet({mode:'add',m:t.dataset.m});return}
+  if(a==='delmeal'){
+    const m=S.meals.find(x=>x.id===t.dataset.m);if(!m)return;
+    snapshot();S.meals=S.meals.filter(x=>x.id!==m.id);save();render();toast('Removido: '+m.nome,true);return;
+  }
+  if(a==='addmeal'){
+    snapshot();S.meals.push({id:uid(),nome:'Nova refeição',hora:'15:00',items:[]});save();render();
+    toast('Refeição adicionada',true);return;
+  }
+  if(a==='resetplan'){
+    snapshot();S.meals=buildPlan(calcMeta(S.profile).kcal);save();render();toast('Cardápio sugerido restaurado',true);return;
+  }
+  if(a==='fitplan'){fitPlan();if(curTab()==='meta')go('cardapio');return}
+  if(a==='savefood'){saveFood();return}
+  if(a==='delfood'){
+    const id=t.dataset.food,f=food(id);snapshot();
+    S.custom=S.custom.filter(x=>x.id!==id);S.meals.forEach(m=>{m.items=m.items.filter(i=>i.f!==id)});
+    if(calcSel&&calcSel.id===id)calcSel=null;save();renderCalc();toast('Excluído: '+(f?f.n:'alimento'),true);return;
+  }
+  if(a==='addcalc'){
+    const m=S.meals.find(x=>x.id===$('#cm').value);
+    if(!m||!(calcSel.g>0)){toast('Informe a quantidade e a refeição',false);return}
+    snapshot();m.items.push({id:uid(),f:calcSel.id,g:calcSel.g});save();
+    toast('Adicionado a '+m.nome,true);return;
+  }
+});
+
+document.addEventListener('input',e=>{
+  if(e.target.id==='sq'){refreshSheet();return}
+  if(curTab()==='meta')onMetaInput(e);
+  else if(curTab()==='calcular')onCalcInput(e);
+});
+
+document.addEventListener('change',e=>{
+  const t=e.target,a=t.dataset&&t.dataset.act;if(!a)return;
+  if(featureChange(t,a))return;
+  if(a==='grams'){
+    const{it}=findItem(t),n=num(t.value);
+    if(it&&n>0&&n<=3000){it.g=Math.round(n*10)/10;save()}
+    render();return;
+  }
+  const m=S.meals.find(x=>x.id===(t.closest('[data-m]')||{dataset:{}}).dataset.m);if(!m)return;
+  if(a==='rename'){m.nome=t.value.trim()||m.nome;t.value=m.nome;save()}
+  if(a==='time'){m.hora=t.value;save()}
+});
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
+
+/* ---------- início ---------- */
+S=load();const fresh=!S;
+if(!S)S=defaults();
+viewDay=todayIdx();S.meals=S.plans[viewDay];
+if(fresh){S.updated=0;save(true)}
+try{localStorage.setItem('meuprato.visits',String((+localStorage.getItem('meuprato.visits')||0)+1))}catch(e){}
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+initSample();initDownloads();bindPhoto();
+render();
+initCloud().then(()=>{const t=curTab();if(t==='hoje'||t==='mais'||t==='cardapio'||t==='progresso')render()});
+</script>
+
+</body></html>
