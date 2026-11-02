@@ -299,6 +299,13 @@ body.setup .tabs{display:none}
 .sexbtn.sex-f i{background:#D63B67}
 .sexbtn.sex-m i{background:#2F7BE0}
 .sexbtn[aria-pressed="true"]{border-color:var(--rind);background:var(--flesh-soft)}
+
+
+.splitl li{align-items:center}
+.sp-c{display:flex;align-items:center;gap:6px;flex:none}
+.sp-v{display:flex;align-items:center;gap:2px;font-weight:800}
+.sp-v input{width:52px;min-height:44px;text-align:center;border:1px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--ink);font:inherit;font-weight:800}
+.sp-c .ib{min-width:44px;min-height:44px;font-size:22px;font-weight:800}
 </style>
 </head><body>
 
@@ -1247,6 +1254,7 @@ function renderMeta(){
     </div>
   </section>
   <div id="metaOut"></div>
+  <div id="splitBox"></div>
   <section class="card">
     <h2>Doce planejado</h2>
     <p class="small muted" style="margin-bottom:8px">Em vez de cortar tudo, escolha 2 ou 3 doces por semana, em porção pequena, e conte no dia.</p>
@@ -1263,7 +1271,7 @@ function renderMeta(){
     <p class="small muted" style="margin-top:12px">Estimativa pela fórmula Mifflin-St Jeor. Um nutricionista ajusta melhor os valores. Para ter o app na tela inicial do iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.</p>
   </section>
   ${setup?`<button class="btn block" data-act="finishsetup" style="margin-bottom:12px">Concluir configuração</button>`:''}`;
-  updateMeta();
+  updateMeta();renderSplit();
   $('#sweets').innerHTML=[['choco70',20],['brigadeiro',25],['sorvete',60],['bolo',60]].map(([id,g])=>{
     const f=FOODMAP[id];return`<li><span>${esc(f.n)}<br><span class="small muted">${fmt(g)} g ${f.u?'('+unitText(f,g).replace('≈ ','')+')':''}</span></span><b>${fmt(mac(f,g).k)} kcal</b></li>`;
   }).join('');
@@ -1350,7 +1358,7 @@ function renderCard(){
     }).join('');
     return`<section class="card" data-m="${m.id}">
       <div class="meal-h"><input class="meal-name" data-act="rename" value="${esc(m.nome)}" aria-label="Nome da refeição"><input class="meal-time" type="time" data-act="time" value="${esc(m.hora)}" aria-label="Horário"></div>
-      <div class="meal-sum"><b>${fmt(t.k)} kcal</b> · P ${fmt(t.p)} g · C ${fmt(t.c)} g · G ${fmt(t.g)} g</div>
+      <div class="meal-sum"><b>${fmt(t.k)} kcal</b> (${fmt(t.k/meta.kcal*100)}% do dia) · P ${fmt(t.p)} g · C ${fmt(t.c)} g · G ${fmt(t.g)} g</div>
       <ul class="items">${rows||'<li class="it small muted" style="display:block">Nenhum alimento ainda.</li>'}</ul>
       <div class="meal-actions"><button class="btn ghost" data-act="add" data-m="${m.id}">Adicionar alimento</button><button class="link danger" data-act="delmeal" data-m="${m.id}">Remover refeição</button></div>
     </section>`;
@@ -2374,6 +2382,106 @@ function phChange(t,a){
 }
 function phSlide(t){const c=$('#cmpo');if(c)c.style.setProperty('--v',t.value+'%')}
 
+/* ---------- divisão das calorias por refeição e ajuste automático ---------- */
+const GRP={carb:'c',fruta:'c',doce:'c',prot:'p',lac:'p',veg:'v',gord:'g',fora:'o',meu:'o'};
+const stepOf=f=>f&&f.u&&f.u.whole?f.u.g:5;
+function shares(meals){
+  const ks=meals.map(m=>sumItems(m.items).k),T=ks.reduce((a,b)=>a+b,0);
+  const raw=ks.map(k=>T?k/T*100:100/meals.length);
+  const fl=raw.map(Math.floor);let rest=100-fl.reduce((a,b)=>a+b,0);
+  raw.map((r,i)=>[r-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([_,i])=>{if(rest>0){fl[i]++;rest--}});
+  return fl;
+}
+function curPcts(meals){
+  if(meals.length&&meals.every(m=>Number.isInteger(m.pct))&&meals.reduce((a,m)=>a+m.pct,0)===100)return meals.map(m=>m.pct);
+  return shares(meals);
+}
+function applySplit(meals,pcts){
+  const kcal=calcMeta(S.profile).kcal;
+  meals.forEach((m,i)=>{
+    m.pct=pcts[i];
+    const k=sumItems(m.items).k,target=kcal*pcts[i]/100;
+    if(k>0&&m.items.length)scalePlan([m],target/k);
+  });
+}
+function setMealPct(idx,val){
+  const meals=S.meals,n=meals.length;if(n<2)return;
+  const p=curPcts(meals);
+  val=Math.round(Math.max(5,Math.min(100-5*(n-1),val)));
+  const others=p.reduce((a,v,i)=>i===idx?a:a+v,0),room=100-val,out=p.slice();out[idx]=val;
+  let sum=val;
+  p.forEach((v,i)=>{if(i===idx)return;out[i]=Math.max(5,Math.round(others?v/others*room:room/(n-1)));sum+=out[i]});
+  let d=100-sum;
+  for(let i=0;d!==0&&i<n*4;i++){const j=i%n;if(j===idx)continue;if(d>0){out[j]++;d--}else if(out[j]>5){out[j]--;d++}}
+  applySplit(meals,out);
+}
+let splitDay=null;
+function renderSplit(){
+  const box=$('#splitBox');if(!box)return;
+  const meals=S.meals,p=curPcts(meals),kcal=calcMeta(S.profile).kcal;
+  const days=DIAS.map((d,i)=>`<button class="chip" data-act="pday" data-d="${i}" aria-pressed="${i===viewDay}">${d.slice(0,3)}</button>`).join('');
+  box.innerHTML=`<section class="card"><h2>Calorias por refeição</h2>
+    <p class="small muted" style="margin-bottom:10px">Escolha quanto do dia cada refeição leva. Ao mudar uma, as outras se ajustam para fechar 100%, e as quantidades dos alimentos são recalculadas.</p>
+    <div class="chips" aria-label="Dia da semana">${days}</div>
+    <ul class="list splitl">${meals.map((m,i)=>`<li><span class="sp-n">${esc(m.nome)}<br><span class="small muted">${esc(m.hora)} · ${fmt(kcal*p[i]/100)} kcal</span></span>
+      <span class="sp-c"><button class="ib" data-act="pct-" data-i="${i}" aria-label="Diminuir ${esc(m.nome)}">−</button><label class="sp-v"><input data-act="pctin" data-i="${i}" inputmode="numeric" value="${p[i]}" aria-label="Porcentagem de ${esc(m.nome)}">%</label><button class="ib" data-act="pct+" data-i="${i}" aria-label="Aumentar ${esc(m.nome)}">+</button></span></li>`).join('')}</ul>
+    <p class="small" style="margin-top:8px"><b>Total: 100%</b> · ${fmt(kcal)} kcal</p>
+    <div class="grid2" style="margin-top:10px"><button class="btn ghost" data-act="pequal">Dividir igualmente</button><button class="btn ghost" data-act="pall">Usar em todos os dias</button></div>
+    <label class="remck" style="margin-top:12px"><input type="checkbox" data-act="autobal"${S.profile.autoBal===false?'':' checked'}><span>Ajustar os outros alimentos da refeição sozinho quando eu mudar uma quantidade</span></label>
+  </section>`;
+}
+function splitClick(a,t){
+  if(a==='pday'){S.plans[viewDay]=S.meals;viewDay=+t.dataset.d;S.meals=S.plans[viewDay];renderSplit();return true}
+  if(a==='pct-'||a==='pct+'){
+    const i=+t.dataset.i,p=curPcts(S.meals);snapshot();setMealPct(i,p[i]+(a==='pct+'?5:-5));save();renderSplit();return true;
+  }
+  if(a==='pequal'){
+    const n=S.meals.length;snapshot();const b=Math.floor(100/n),p=S.meals.map((_,i)=>b+(i<100-b*n?1:0));
+    applySplit(S.meals,p);save();renderSplit();toast('Calorias divididas igualmente',true);return true;
+  }
+  if(a==='pall'){
+    const p=curPcts(S.meals),n=S.meals.length;S.plans[viewDay]=S.meals;snapshot();let c=0,sk=0;
+    S.plans.forEach((pl,d)=>{if(pl===S.meals)return;if(pl.length===n){applySplit(pl,p);c++}else sk++});
+    save();toast('Divisão copiada para '+c+' dia'+(c===1?'':'s')+(sk?'. '+sk+' com outro número de refeições ficaram como estão':''),true);return true;
+  }
+  return false;
+}
+function splitChange(t,a){
+  if(a==='pctin'){
+    const n=num(t.value);if(n>0&&n<100){snapshot();setMealPct(+t.dataset.i,n);save()}
+    renderSplit();return true;
+  }
+  if(a==='autobal'){S.profile.autoBal=t.checked;save();return true}
+  return false;
+}
+/* ao mudar a quantidade de um alimento, compensa nos outros da mesma refeição para manter as calorias */
+function shiftKcal(items,delta,lo){
+  const c=items.filter(i=>{const f=food(i.f);return f&&f.k>1});
+  const W=c.reduce((a,i)=>a+food(i.f).k*i.g/100,0);if(!W)return delta;
+  let left=delta;
+  c.forEach(i=>{
+    const f=food(i.f),kd=f.k/100,step=stepOf(f),w=f.k*i.g/100/W;
+    let ng=i.g+delta*w/kd;
+    ng=Math.min(i.g*1.5,Math.max(step,(i._o||i.g)*lo,Math.round(ng/step)*step));ng=Math.max(step,Math.round(ng/step)*step);
+    left-=(ng-i.g)*kd;i.g=ng;
+  });
+  return left;
+}
+function compensate(m,it,before){
+  const f0=food(it.f),others=m.items.filter(x=>x.id!==it.id);
+  if(!f0||!others.length)return[];
+  const snap=new Map(m.items.map(x=>[x.id,x.g]));
+  others.forEach(x=>{x._o=x.g});
+  let diff=before-sumItems(m.items).k;
+  const g0=GRP[f0.c]||'o';
+  [[others.filter(x=>(food(x.f)||{}).c===f0.c),0.3],[others.filter(x=>GRP[(food(x.f)||{}).c]===g0),0.4],[others.filter(x=>!['veg','gord'].includes((food(x.f)||{}).c)),0.7]].forEach(([set,lo])=>{
+    if(Math.abs(diff)<8||!set.length)return;
+    shiftKcal(set,diff,lo);diff=before-sumItems(m.items).k;
+  });
+  others.forEach(x=>{delete x._o});
+  return others.filter(x=>x.g!==snap.get(x.id)).map(x=>(food(x.f)||{}).n).filter(Boolean);
+}
+
 /* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
 let sampleFn=null,photo=null;
 const PHOTO_HIDE=['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','images_unavailable'];
@@ -2559,6 +2667,7 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act;
   if(acctClick(a,t))return;
+  if(splitClick(a,t))return;
   if(featureClick(a,t))return;
   if(a==='closesheet'){closeSheet();return}
   if(a==='cat'){
@@ -2617,10 +2726,18 @@ document.addEventListener('input',e=>{
 
 document.addEventListener('change',e=>{
   const t=e.target,a=t.dataset&&t.dataset.act;if(!a)return;
+  if(splitChange(t,a))return;
   if(featureChange(t,a))return;
   if(a==='grams'){
-    const{it}=findItem(t),n=num(t.value);
-    if(it&&n>0&&n<=3000){it.g=Math.round(n*10)/10;save()}
+    const{m:mm,it}=findItem(t),n=num(t.value);
+    let moved=[];
+    if(it&&n>0&&n<=3000){
+      snapshot();const before=sumItems(mm.items).k;
+      it.g=Math.round(n*10)/10;
+      if(S.profile.autoBal!==false&&mm.items.length>1)moved=compensate(mm,it,before);
+      save();
+      if(moved.length){render();toast('Ajustei '+moved.slice(0,3).join(', ')+'. A refeição ficou com '+fmt(sumItems(mm.items).k)+' kcal (antes '+fmt(before)+')',true);return}
+    }
     render();return;
   }
   const m=S.meals.find(x=>x.id===(t.closest('[data-m]')||{dataset:{}}).dataset.m);if(!m)return;
