@@ -276,6 +276,29 @@ body .photo-btn{display:none!important}
 .weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 10px;font-weight:700}
 .weeknav .ib[disabled]{opacity:.35}
 .txt{width:100%;box-sizing:border-box;font:inherit;font-size:16px;color:var(--ink);background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:12px;resize:vertical}
+
+
+/* tema masculino: azul */
+:root[data-sex="m"]{ --bg:#F1F6FD; --bg-glow:#DDEAFA; --surface:#FFFFFF; --surface2:#E6EFFB; --ink:#16273F; --muted:#566B85; --line:#D3E1F3;
+  --rind:#1E4F9C; --on-rind:#FFFFFF; --flesh:#2F7BE0; --flesh-soft:#DCEAFC;
+  --hero-a:#173F7E; --hero-b:#2F7BE0; --on-hero:#FFFFFF; --shadow:0 10px 26px rgba(30,79,156,.12); }
+@media (prefers-color-scheme: dark){
+  :root[data-sex="m"]:not([data-theme="light"]){ --bg:#0F1824; --bg-glow:#14263B; --surface:#17232F; --surface2:#1F3042; --ink:#E8F1FC; --muted:#9DB5CE; --line:#2B4058;
+  --rind:#7DB2F5; --on-rind:#0B1626; --flesh:#6AA6F2; --flesh-soft:#1D3552;
+  --hero-a:#173A66; --hero-b:#2A63AE; --shadow:0 10px 26px rgba(0,0,0,.4); }
+}
+:root[data-sex="m"][data-theme="dark"]{ --bg:#0F1824; --bg-glow:#14263B; --surface:#17232F; --surface2:#1F3042; --ink:#E8F1FC; --muted:#9DB5CE; --line:#2B4058;
+  --rind:#7DB2F5; --on-rind:#0B1626; --flesh:#6AA6F2; --flesh-soft:#1D3552;
+  --hero-a:#173A66; --hero-b:#2A63AE; --shadow:0 10px 26px rgba(0,0,0,.4); }
+/* contas */
+body.authing .tabs{display:none}
+body.setup .tabs{display:none}
+.sexrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sexbtn{display:flex;align-items:center;justify-content:center;gap:10px;min-height:56px;border:2px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);font:inherit;font-weight:800;font-size:16px;cursor:pointer}
+.sexbtn i{width:18px;height:18px;border-radius:50%;flex:none}
+.sexbtn.sex-f i{background:#D63B67}
+.sexbtn.sex-m i{background:#2F7BE0}
+.sexbtn[aria-pressed="true"]{border-color:var(--rind);background:var(--flesh-soft)}
 </style>
 </head><body>
 
@@ -877,10 +900,11 @@ const food=id=>FOODMAP[id]||(S&&S.custom.find(f=>f.id===id))||null;
 const allFoods=()=>FOODS.concat(S.custom);
 
 function calcMeta(p){
-  const tmb=10*p.peso+6.25*p.altura-5*p.idade-161;
+  const male=p.sexo==='m';
+  const tmb=10*p.peso+6.25*p.altura-5*p.idade+(male?5:-161);
   const tdee=tmb*p.ativ;
   let k=p.obj==='perder'?tdee*(1-p.ritmo):p.obj==='ganhar'?tdee*1.1:tdee;
-  k=Math.max(1200,Math.round(k/10)*10);
+  k=Math.max(male?1500:1200,Math.round(k/10)*10);
   const prot=Math.round(p.peso*(p.obj==='ganhar'?2:1.8));
   let gord=Math.round(p.peso*0.8);
   let carb=Math.round((k-prot*4-gord*9)/4);
@@ -927,15 +951,33 @@ function norm0(o){
   delete o.meals;
   return Object.assign({custom:[],log:{},medidas:[],shop:{}},o);
 }
-function load(){
-  try{
-    const r=localStorage.getItem(KEY);if(!r)return null;
-    return norm0(JSON.parse(r));
-  }catch(e){}
-  return null;
+
+/* ---------- conta, servidor e sincronização ---------- */
+const API='https://api-production-4b213.up.railway.app';
+let TOKEN='',ME=null,syncState='idle',syncTimer=0,syncBusy=false,syncDirty=false,syncLast={},bannerOff=false;
+let authMode='entrar',authBusy=false,regSexo='f',legacy=null;
+const tokGet=()=>{try{return localStorage.getItem('meuprato.token')||''}catch(e){return ''}};
+const tokSet=t=>{try{t?localStorage.setItem('meuprato.token',t):localStorage.removeItem('meuprato.token')}catch(e){}};
+function setTheme(sexo){
+  const s=sexo==='m'?'m':'f';
+  document.documentElement.dataset.sex=s;
+  const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=s==='m'?'#F1F6FD':'#FDF3F6';
 }
-/* guardar: neste aparelho e, quando a pessoa está logada no Claude, também na conta dela */
-let cloudMode='',cloudWhy='',localOk=true,cloudCol=null,cloudState='wait',cloudTimer=0,cloudBusy=false,cloudDirty=false,cloudLast={},bannerOff=false;
+async function api(path,opt){
+  opt=opt||{};
+  const h={'content-type':'application/json'};
+  if(opt.auth!==false&&TOKEN)h.authorization='Bearer '+TOKEN;
+  let r;
+  try{r=await fetch(API+path,{method:opt.method||'GET',headers:h,body:opt.body?JSON.stringify(opt.body):undefined,keepalive:!!opt.keepalive})}
+  catch(e){const er=new Error('Sem conexão com o servidor.');er.code='offline';throw er}
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok){
+    const er=new Error(j.erro||'Não foi possível concluir.');er.status=r.status;
+    if(r.status===401&&opt.auth!==false&&TOKEN){er.expired=true}
+    throw er;
+  }
+  return j;
+}
 function splitState(o){
   const core=Object.assign({},o),log=core.log||{};delete core.log;
   const docs={core:JSON.stringify(core)},by={};
@@ -943,73 +985,219 @@ function splitState(o){
   Object.keys(by).forEach(m=>{docs['log_'+m]=JSON.stringify(by[m])});
   return docs;
 }
-function save(keep){
-  let o;
-  try{
-    S.plans[viewDay]=S.meals;if(!keep)S.updated=Date.now();
-    o=Object.assign({},S);delete o.meals;
-    localStorage.setItem(KEY,JSON.stringify(o));
-    if(localStorage.getItem(KEY)===null)localOk=false;
-  }catch(e){localOk=false}
-  if(cloudCol){cloudDirty=true;clearTimeout(cloudTimer);cloudTimer=setTimeout(cloudPush,1200)}
+const SYNC_TXT={ok:'salvo',idle:'',pending:'salvando...',saving:'salvando...',offline:'sem conexão',err:'erro ao salvar'};
+function showSync(){
+  const t=$('#tag');if(!t)return;
+  t.textContent=ME?ME.nome+(SYNC_TXT[syncState]?' · '+SYNC_TXT[syncState]:''):'Calorias e cardápio';
 }
-async function cloudPush(){
-  if(!cloudCol)return;
-  if(cloudBusy){cloudDirty=true;return}
-  cloudBusy=true;cloudDirty=false;
+function save(keep){
+  if(!S||!TOKEN)return;
+  S.plans[viewDay]=S.meals;if(!keep)S.updated=Date.now();
+  syncDirty=true;if(syncState!=='offline'&&syncState!=='err')syncState='pending';
+  clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,900);showSync();
+}
+async function syncPush(){
+  if(!TOKEN||!S)return;
+  if(syncBusy){syncDirty=true;return}
+  syncBusy=true;syncDirty=false;syncState='saving';showSync();
+  let ok=true;
   try{
     const o=Object.assign({},S);delete o.meals;o.plans=S.plans;
     const docs=splitState(o);
     for(const n of Object.keys(docs)){
-      if(cloudLast[n]===docs[n])continue;
-      await cloudCol.doc(n).set({json:docs[n],t:Date.now()});
-      cloudLast[n]=docs[n];
+      if(syncLast[n]===docs[n])continue;
+      await api('/api/doc/'+n,{method:'PUT',body:{json:docs[n]}});
+      syncLast[n]=docs[n];
     }
-    cloudState='ok';
-  }catch(e){cloudState='err';cloudWhy+=' escrita='+((e&&(e.code||e.message))||'?')}
-  cloudBusy=false;
-  if(cloudDirty)cloudTimer=setTimeout(cloudPush,500);
+    syncState='ok';
+  }catch(e){
+    ok=false;
+    if(e.expired){syncBusy=false;forceLogout('Sua sessão expirou. Entre de novo.');return}
+    syncState=e.code==='offline'?'offline':'err';syncDirty=true;
+    setTimeout(()=>{if(syncDirty&&!syncBusy)syncPush()},8000);
+  }
+  syncBusy=false;
+  if(ok&&syncDirty){clearTimeout(syncTimer);syncTimer=setTimeout(syncPush,300)}
+  showSync();
+  if(curTab()==='hoje'&&bannerNeeded())renderHoje();
 }
-async function initCloud(){
-  try{
-    const t=ms=>new Promise((_,rj)=>setTimeout(()=>rj(new Error('timeout')),ms));
-    if(!window.claude||!window.claude.use){cloudState='off';cloudWhy='sem window.claude';return}
-    const db=await window.claude.use('db'),user=await window.claude.use('user');
-    const id=user&&user.id?await user.id():null;
-    cloudWhy='db='+(db?'sim':'nao')+' user='+(user?'sim':'nao')+' id='+(id?'sim':'nao');
-    if(!db||!id){cloudState='off';return}
-    const col=db.collection('data/users/'+id);
-    const snap=await Promise.race([col.get(),t(10000)]);
-    const docs={};snap.docs.forEach(d=>{const x=d.data();if(x&&typeof x.json==='string')docs[d.id]=x.json});
-    if(docs.core){
-      let c=null;try{c=JSON.parse(docs.core)}catch(e){}
-      if(c&&c.profile){
-        c.log={};
-        Object.keys(docs).filter(n=>n.indexOf('log_')===0).forEach(n=>{try{Object.assign(c.log,JSON.parse(docs[n]))}catch(e){}});
-        if((c.updated||0)>(S.updated||0)){
-          const ns=norm0(c);
-          if(ns){S=ns;viewDay=todayIdx();S.meals=S.plans[viewDay];
-            try{localStorage.setItem(KEY,JSON.stringify(Object.assign({},S,{meals:undefined})))}catch(e){}}
-        }
-      }
-    }
-    Object.keys(docs).forEach(n=>{cloudLast[n]=docs[n]});
-    cloudCol=col;cloudState='ok';
-    if(!docs.core||(S.updated||0)>0)cloudPush();
-  }catch(e){cloudState='err';cloudWhy+=' erro='+((e&&(e.code||e.message))||'?')}
-}
+const bannerNeeded=()=>!bannerOff&&(syncState==='offline'||syncState==='err')&&!document.querySelector('.warnc');
 function storageNote(){
-  if(SA){return localOk?{ok:true,t:'Seus dados ficam salvos neste aparelho, no Safari. Para não perder nada, faça uma cópia em Backup dos dados de vez em quando.'}:{ok:false,t:'Este navegador não está guardando dados (modo privado?). Abra o app numa aba normal do Safari.'}}
-  if(cloudState==='ok')return{ok:true,t:'Seus dados estão salvos na sua conta do Claude. Se você trocar de celular ou limpar o Safari, eles voltam ao abrir o link logada.'};
-  if(cloudState==='err')return{ok:false,t:'Não consegui salvar na sua conta agora. Os dados ficam só neste aparelho. Use o Backup dos dados para ter uma cópia.'};
-  if(!localOk)return{ok:false,t:'Este navegador não está guardando dados. Abra o link logada na sua conta do Claude (claude.ai) para o app salvar suas informações.'};
-  return{ok:false,t:'Os dados estão sendo guardados só neste aparelho e podem se perder. Para salvar na sua conta, abra o link logada no claude.ai.'};
+  if(syncState==='offline')return{ok:false,t:'Sem conexão. Suas alterações estão neste aparelho e serão salvas no servidor quando a internet voltar. Não feche o app até voltar.'};
+  if(syncState==='err')return{ok:false,t:'Não consegui salvar no servidor agora. O app vai tentar de novo sozinho. Use o Backup dos dados para ter uma cópia.'};
+  return{ok:true,t:'Seus dados ficam salvos no servidor, na sua conta. Se trocar de celular, é só entrar com seu usuário e senha.'};
 }
 function storageBanner(){
-  if(SA&&localOk)return'';
-  if(bannerOff||cloudState==='ok'||cloudState==='wait')return'';
-  const n=storageNote();
-  return`<section class="card warnc"><p class="small" style="margin:0"><b>Atenção:</b> ${esc(n.t)}</p><p class="small muted" style="margin:6px 0 0">Detalhe: ${esc(cloudWhy||'-')}</p><button class="link" data-act="bannerx" style="margin-top:8px">Entendi</button></section>`;
+  if(bannerOff||(syncState!=='offline'&&syncState!=='err'))return'';
+  return`<section class="card warnc"><p class="small" style="margin:0"><b>Atenção:</b> ${esc(storageNote().t)}</p><button class="link" data-act="bannerx" style="margin-top:8px">Entendi</button></section>`;
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&syncDirty&&TOKEN){clearTimeout(syncTimer);syncPush()}else if(!document.hidden&&TOKEN&&(syncState==='offline'||syncState==='err'))syncPush()});
+window.addEventListener('online',()=>{if(TOKEN&&syncDirty)syncPush()});
+function defaultsFor(sexo){
+  const d=defaults();d.profile.sexo=sexo;d.profile.setup=false;
+  d.plans=buildWeek(calcMeta(d.profile).kcal);return d;
+}
+function loadFromDocs(docs){
+  syncLast={};
+  let c=null;try{c=docs.core?JSON.parse(docs.core):null}catch(e){}
+  if(c&&c.profile){
+    c.log={};
+    Object.keys(docs).filter(n=>n.indexOf('log_')===0).forEach(n=>{try{Object.assign(c.log,JSON.parse(docs[n]))}catch(e){}});
+    S=norm0(c);
+    if(S.profile.setup===undefined)S.profile.setup=true;
+    Object.keys(docs).forEach(n=>{syncLast[n]=docs[n]});
+  }else{S=defaultsFor(ME.sexo);syncLast={}}
+  S.profile.sexo=ME.sexo;
+  viewDay=todayIdx();S.meals=S.plans[viewDay];
+}
+function appReady(){
+  document.body.classList.remove('authing');
+  setTheme(ME.sexo);syncState='ok';showSync();
+  if(!location.hash||!TABS.includes(location.hash.slice(1)))location.hash='#hoje';
+  render();
+  syncDirty=true;syncPush();
+}
+async function boot(){
+  TOKEN=tokGet();
+  if(!TOKEN){showAuth();return}
+  try{
+    const st=await api('/api/state');
+    ME=st.user;loadFromDocs(st.docs);appReady();
+  }catch(e){
+    if(e.code==='offline'){showRetry(e.message)}
+    else{tokSet('');TOKEN='';showAuth(e.message)}
+  }
+}
+function showRetry(msg){
+  document.body.classList.add('authing');
+  $('#view').innerHTML=`<section class="card center"><h2>Sem conexão</h2><p class="muted">${esc(msg)} Confira sua internet e tente de novo.</p><button class="btn block" data-act="retryboot" style="margin-top:14px">Tentar de novo</button></section>`;
+}
+function forceLogout(msg){
+  tokSet('');TOKEN='';ME=null;S=null;syncLast={};syncState='idle';
+  phList=[];phLoaded=false;phSel=[];phU={};progView='medidas';
+  setTheme('f');showAuth(msg);
+}
+/* telas de entrada */
+function showAuth(msg){
+  document.body.classList.add('authing');document.body.classList.remove('setup');
+  regSexo=regSexo||'f';setTheme(authMode==='criar'?regSexo:'f');showSync();
+  try{const o=localStorage.getItem(KEY);legacy=o?norm0(JSON.parse(o)):null}catch(e){legacy=null}
+  const sexBtn=(k,t)=>`<button type="button" class="sexbtn sex-${k}" data-act="auth-sexo" data-s="${k}" aria-pressed="${regSexo===k}"><i></i>${t}</button>`;
+  $('#view').innerHTML=`
+  <div class="seg" role="tablist"><button role="tab" aria-selected="${authMode==='entrar'}" data-act="auth-mode" data-m="entrar">Entrar</button><button role="tab" aria-selected="${authMode==='criar'}" data-act="auth-mode" data-m="criar">Criar conta</button></div>
+  <section class="card">
+    <h2>${authMode==='entrar'?'Bem-vindo de volta':'Crie sua conta'}</h2>
+    <p class="small muted" style="margin-bottom:12px">${authMode==='entrar'?'Entre com seu usuário e senha para ver seu cardápio e seu diário.':'Cada pessoa tem sua própria conta, com seus dados, metas e fotos.'}</p>
+    <div class="grid2">
+      ${authMode==='criar'?`<label class="f full">Seu nome<input id="a-nome" autocomplete="given-name" maxlength="40" placeholder="Como quer ser chamado"></label>
+      <div class="full" role="group" aria-label="Sexo"><p class="small muted" style="margin:0 0 8px;font-weight:800">Sexo</p><div class="sexrow">${sexBtn('f','Feminino')}${sexBtn('m','Masculino')}</div></div>`:''}
+      <label class="f full">Usuário<input id="a-user" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="${authMode==='criar'?'ex.: maria.silva':'seu usuário'}"></label>
+      <label class="f full">Senha<input id="a-pass" type="password" autocomplete="${authMode==='criar'?'new-password':'current-password'}" placeholder="${authMode==='criar'?'mínimo 6 caracteres':'sua senha'}"></label>
+    </div>
+    ${authMode==='criar'&&legacy?`<label class="remck" style="margin-top:12px"><input type="checkbox" id="a-legacy" checked><span>Trazer os dados que já estão neste aparelho (cardápio, diário e medidas)</span></label>`:''}
+    <p class="hint" id="a-err"${msg?'':' hidden'} style="margin-top:10px">${esc(msg||'')}</p>
+    <button class="btn block" id="authgo" data-act="authgo" style="margin-top:14px">${authMode==='entrar'?'Entrar':'Criar conta'}</button>
+  </section>`;
+}
+async function doAuth(){
+  if(authBusy)return;
+  const err=m=>{const e=$('#a-err');if(e){e.textContent=m;e.hidden=!m}};
+  const user=($('#a-user').value||'').trim().toLowerCase(),pass=$('#a-pass').value||'';
+  if(!user||!pass)return err('Informe usuário e senha.');
+  const btn=$('#authgo');authBusy=true;btn.disabled=true;btn.textContent='Aguarde...';err('');
+  try{
+    let r;
+    if(authMode==='criar'){
+      const nome=($('#a-nome').value||'').trim();
+      if(!nome)throw new Error('Informe seu nome.');
+      r=await api('/api/register',{method:'POST',auth:false,body:{username:user,pass,nome,sexo:regSexo}});
+    }else r=await api('/api/login',{method:'POST',auth:false,body:{username:user,pass}});
+    TOKEN=r.token;tokSet(TOKEN);ME=r.user;
+    const st=await api('/api/state');ME=st.user;loadFromDocs(st.docs);
+    const useLegacy=authMode==='criar'&&legacy&&$('#a-legacy')&&$('#a-legacy').checked;
+    location.hash='#hoje';
+    if(useLegacy){
+      S=legacy;S.profile.setup=true;S.profile.sexo=ME.sexo;viewDay=todayIdx();S.meals=S.plans[viewDay];
+    }
+    authBusy=false;appReady();
+    if(useLegacy)importLegacyPhotos().then(()=>{wipeLegacy();toast('Dados do aparelho trazidos para a sua conta',false)});
+  }catch(e){
+    authBusy=false;
+    const b=$('#authgo');if(b){b.disabled=false;b.textContent=authMode==='entrar'?'Entrar':'Criar conta'}
+    err(e.message||'Não foi possível concluir.');
+  }
+}
+function wipeLegacy(){try{localStorage.removeItem(KEY);localStorage.removeItem('meuprato.visits');localStorage.removeItem('meuprato.fired');localStorage.removeItem('meuprato.code')}catch(e){}try{indexedDB.deleteDatabase('meuprato-fotos')}catch(e){}}
+function importLegacyPhotos(){
+  return new Promise(res=>{
+    try{
+      const r=indexedDB.open('meuprato-fotos',1);
+      r.onupgradeneeded=()=>{try{r.transaction.abort()}catch(e){}};
+      r.onerror=()=>res();r.onblocked=()=>res();
+      r.onsuccess=()=>{
+        try{
+          const db=r.result;if(!db.objectStoreNames.contains('f')){res();return}
+          const q=db.transaction('f').objectStore('f').getAll();
+          q.onsuccess=async()=>{for(const f of (q.result||[])){try{await api('/api/photos',{method:'POST',body:{id:f.id,pose:f.pose,d:f.d,u:f.u,t:f.t}})}catch(e){}}res()};
+          q.onerror=()=>res();
+        }catch(e){res()}
+      };
+    }catch(e){res()}
+  });
+}
+async function doLogout(){
+  try{await api('/api/logout',{method:'POST',keepalive:true})}catch(e){}
+  authMode='entrar';forceLogout('');
+}
+/* minha conta */
+function renderConta(){
+  $('#view').innerHTML=back()+`
+  <section class="card"><h2>Minha conta</h2>
+    <p><b>${esc(ME.nome)}</b><br><span class="muted small">Usuário: ${esc(ME.username)} · ${ME.sexo==='m'?'Masculino':'Feminino'}</span></p>
+    <p class="small ${storageNote().ok?'':'muted'}" style="margin-top:10px">${esc(storageNote().t)}</p>
+    <button class="btn ghost block" data-act="logout" style="margin-top:12px">Sair da conta</button>
+  </section>
+  <section class="card"><h2>Alterar senha</h2>
+    <div class="grid2">
+      <label class="f full">Senha atual<input id="c-old" type="password" autocomplete="current-password"></label>
+      <label class="f full">Nova senha<input id="c-new" type="password" autocomplete="new-password" placeholder="mínimo 6 caracteres"></label>
+    </div>
+    <p class="hint" id="c-err" hidden style="margin-top:10px"></p>
+    <button class="btn block" data-act="chpass" style="margin-top:12px">Salvar nova senha</button>
+  </section>
+  <section class="card"><h2>Excluir conta</h2>
+    <p class="small muted">Apaga para sempre seus dados e suas fotos do servidor. Não dá para desfazer.</p>
+    <label class="f full" style="margin-top:10px">Digite sua senha<input id="d-pass" type="password" autocomplete="current-password"></label>
+    <p class="hint" id="d-err" hidden style="margin-top:10px"></p>
+    <button class="btn ghost block danger" data-act="delacct" style="margin-top:12px">Excluir minha conta</button>
+  </section>`;
+}
+let delArm=false;
+function acctClick(a,t){
+  if(a==='auth-mode'){authMode=t.dataset.m;showAuth('');return true}
+  if(a==='auth-sexo'){
+    regSexo=t.dataset.s;setTheme(regSexo);
+    document.querySelectorAll('.sexbtn').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.s===regSexo)));return true;
+  }
+  if(a==='authgo'){doAuth();return true}
+  if(a==='finishsetup'){finishSetup();return true}
+  if(a==='retryboot'){boot();return true}
+  if(a==='logout'){doLogout();return true}
+  if(a==='chpass'){
+    const e=$('#c-err'),show=m=>{e.textContent=m;e.hidden=!m};
+    api('/api/password',{method:'POST',body:{old:$('#c-old').value,new:$('#c-new').value}})
+      .then(()=>{toast('Senha alterada',false);renderConta()}).catch(er=>show(er.message));
+    return true;
+  }
+  if(a==='delacct'){
+    const e=$('#d-err'),show=m=>{e.textContent=m;e.hidden=!m};
+    if(!delArm){delArm=true;t.textContent='Toque de novo para excluir de vez';return true}
+    delArm=false;
+    api('/api/account',{method:'DELETE',body:{pass:$('#d-pass').value}})
+      .then(()=>{tokSet('');TOKEN='';ME=null;S=null;authMode='criar';forceLogout('Conta excluída.')}).catch(er=>{t.textContent='Excluir minha conta';show(er.message)});
+    return true;
+  }
+  return false;
 }
 
 /* desfazer e aviso */
@@ -1035,15 +1223,23 @@ const RITMO=[[0.1,'Leve (10% a menos)'],[0.2,'Moderado (20% a menos)'],[0.25,'Fi
 const opts=(list,sel)=>list.map(([v,t])=>`<option value="${v}"${String(v)===String(sel)?' selected':''}>${t}</option>`).join('');
 
 function renderMeta(){
-  const p=S.profile;
+  const p=S.profile,setup=p.setup===false,male=ME.sexo==='m';
+  document.body.classList.toggle('setup',setup);
   $('#view').innerHTML=`
-  ${back()}
+  ${setup?`<section class="card"><h2>Bem-vindo, ${esc(ME.nome)}!</h2><p class="small muted">Antes de começar, configure o app para você. Confira seus dados abaixo: o app calcula sua meta de calorias e monta um cardápio da semana. Depois você pode trocar tudo.</p></section>`:back()}
+  <section class="card">
+    <h2>Seu perfil</h2>
+    <div class="grid2">
+      <label class="f">Nome<input id="f-nome" autocomplete="off" maxlength="40" value="${esc(ME.nome)}"></label>
+      <label class="f">Sexo<select id="f-sexo"><option value="f"${male?'':' selected'}>Feminino</option><option value="m"${male?' selected':''}>Masculino</option></select></label>
+    </div>
+  </section>
   <section class="card">
     <h2>Seus dados</h2>
     <div class="grid2">
       <label class="f">Peso (kg)<input id="f-peso" inputmode="decimal" autocomplete="off" value="${dv(p.peso)}"></label>
       <label class="f">Altura (cm)<input id="f-altura" inputmode="numeric" autocomplete="off" value="${dv(p.altura)}"></label>
-      <label class="f">Idade (anos)<input id="f-idade" inputmode="numeric" autocomplete="off" value="${dv(p.idade)}"><span class="hint" id="ageHint"${p.ageSet?' hidden':''}>Valor de exemplo. Ajuste para a idade dela.</span></label>
+      <label class="f">Idade (anos)<input id="f-idade" inputmode="numeric" autocomplete="off" value="${dv(p.idade)}"><span class="hint" id="ageHint"${p.ageSet?' hidden':''}>Valor de exemplo. Ajuste para a sua idade.</span></label>
       <label class="f">Treino<select id="f-ativ">${opts(ATIV,p.ativ)}</select></label>
       <label class="f full">Objetivo<select id="f-obj">${opts(OBJ,p.obj)}</select></label>
       <label class="f full" id="ritmoBox"${p.obj==='perder'?'':' hidden'}>Ritmo da perda<select id="f-ritmo">${opts(RITMO,p.ritmo)}</select></label>
@@ -1062,10 +1258,11 @@ function renderMeta(){
       <li>A gordura da barriga não sai sozinha. Ela diminui com o corpo todo, com déficit de calorias e musculação.</li>
       <li>Beber água, dormir 7 a 8 horas e evitar refrigerante e suco ajudam a controlar a vontade de doce.</li>
       <li>Meça a cintura e pese a cada 2 semanas, não todo dia.</li>
-      <li>Sobre o anticoncepcional, converse com a ginecologista antes de mudar qualquer coisa.</li>
+      ${male?'':'<li>Sobre o anticoncepcional, converse com a ginecologista antes de mudar qualquer coisa.</li>'}
     </ul>
     <p class="small muted" style="margin-top:12px">Estimativa pela fórmula Mifflin-St Jeor. Um nutricionista ajusta melhor os valores. Para ter o app na tela inicial do iPhone: toque em Compartilhar e depois em Adicionar à Tela de Início.</p>
-  </section>`;
+  </section>
+  ${setup?`<button class="btn block" data-act="finishsetup" style="margin-bottom:12px">Concluir configuração</button>`:''}`;
   updateMeta();
   $('#sweets').innerHTML=[['choco70',20],['brigadeiro',25],['sorvete',60],['bolo',60]].map(([id,g])=>{
     const f=FOODMAP[id];return`<li><span>${esc(f.n)}<br><span class="small muted">${fmt(g)} g ${f.u?'('+unitText(f,g).replace('≈ ','')+')':''}</span></span><b>${fmt(mac(f,g).k)} kcal</b></li>`;
@@ -1095,9 +1292,22 @@ function updateMeta(){
   </ul>
   <button class="btn block" data-act="fitall" style="margin-top:12px">Ajustar o cardápio da semana a esta meta</button></section>`;
 }
+let nameTimer=0;
+function pushProfile(){api('/api/profile',{method:'PUT',body:{nome:ME.nome,sexo:ME.sexo}}).catch(()=>{})}
+function finishSetup(){
+  S.plans=buildWeek(calcMeta(S.profile).kcal);viewDay=todayIdx();S.meals=S.plans[viewDay];
+  S.profile.setup=true;document.body.classList.remove('setup');save();location.hash='#hoje';render();toast('Tudo pronto, '+ME.nome+'!',false);
+}
 function onMetaInput(e){
   const id=e.target.id;if(!id||id.indexOf('f-')!==0)return;
   const p=S.profile,v=e.target.value;
+  if(id==='f-nome'){
+    const n=v.trim();if(!n)return;ME.nome=n.slice(0,40);showSync();
+    clearTimeout(nameTimer);nameTimer=setTimeout(pushProfile,900);return;
+  }
+  if(id==='f-sexo'){
+    ME.sexo=v==='m'?'m':'f';p.sexo=ME.sexo;setTheme(ME.sexo);pushProfile();save();renderMeta();return;
+  }
   const lim={peso:[35,250],altura:[120,220],idade:[18,90]};
   if(id==='f-obj'){p.obj=v;$('#ritmoBox').hidden=v!=='perder'}
   else if(id==='f-ativ')p.ativ=parseFloat(v);
@@ -1434,7 +1644,7 @@ function renderHoje(){
   }).join('');
   $('#view').innerHTML=`
   <p class="eyebrow">${esc(date)}</p>
-  <h2 class="greet">${saudacao()}!</h2>
+  <h2 class="greet">${saudacao()}, ${esc(ME.nome.split(' ')[0])}!</h2>
   ${storageBanner()}
   ${nextMealCard(plan,lg,now)}
   <section class="card">
@@ -1599,10 +1809,10 @@ function renderMais(){
   <button class="navcard" data-tab="semana"><span><b>Resumo da semana</b><span>Médias, dias na meta e texto para enviar.</span></span>›</button>
   <button class="navcard" data-tab="backup"><span><b>Backup dos dados</b><span>Salvar e restaurar tudo.</span></span>›</button>
   <button class="navcard" data-tab="receitas"><span><b>Receitas leves</b><span>Doces e salgados com as calorias calculadas.</span></span>›</button>
-  <section class="card"><h2>Salvamento</h2><p class="small ${storageNote().ok?'':'muted'}">${esc(storageNote().t)}</p>${photo_hint()}<p class="small muted" style="margin-top:8px">${SA?'':'Detalhe: '+esc(cloudWhy||'-')+' · aberturas neste aparelho: '+visits()}</p></section>`;
+  <button class="navcard" data-tab="conta"><span><b>Minha conta</b><span>${esc(ME.nome)} · sair, trocar senha ou excluir conta.</span></span>›</button>
+  <section class="card"><h2>Salvamento</h2><p class="small ${storageNote().ok?'':'muted'}">${esc(storageNote().t)}</p></section>`;
 }
-function visits(){try{return localStorage.getItem('meuprato.visits')||'?'}catch(e){return 'storage bloqueado'}}
-function photo_hint(){return SA?'':(document.body.classList.contains('photo-yes')?'':'<p class="small muted" style="margin-top:8px">A foto da refeição e a estimativa pelo nome só funcionam quando o link é aberto logada numa conta do Claude.</p>')}
+function photo_hint(){return document.body.classList.contains('photo-yes')?'':'<p class="small muted" style="margin-top:8px">A foto da refeição e a estimativa pelo nome só funcionam quando o link é aberto logada numa conta do Claude.</p>'}
 function shopEntries(){
   const tot={};
   for(let d=0;d<7;d++)planOf(d).forEach(m=>m.items.forEach(i=>{tot[i.f]=(tot[i.f]||0)+i.g}));
@@ -1785,7 +1995,7 @@ function renderBackup(){
   impPending=null;
   $('#view').innerHTML=back()+`
   <section class="card"><h2>Salvar uma cópia</h2>
-    <p class="small muted">Guarda seu cardápio, diário e medidas. Use antes de trocar de celular ou limpar o Safari.</p>
+    <p class="small muted">Guarda seu cardápio, diário e medidas. Seus dados já ficam salvos na sua conta; a cópia é um extra.</p>
     <button class="btn block" id="bkSave" data-act="bkexport" style="margin-top:12px"${dlFn?'':' hidden'}>Baixar arquivo de backup</button>
     <button class="btn ghost block" data-act="bkcopy" style="margin-top:10px">Copiar backup</button>
     <p class="small muted" style="margin-top:8px">Copie e cole numa conversa ou nota. Para voltar, cole aqui embaixo.</p>
@@ -1800,7 +2010,7 @@ function renderBackup(){
 function bkImport(){
   const err=$('#impErr'),btn=$('#impBtn'),fail=t=>{err.textContent=t;err.hidden=false;impPending=null;btn.textContent='Restaurar'};
   if(impPending){
-    S=impPending;impPending=null;viewDay=todayIdx();S.meals=S.plans[viewDay];save();
+    S=impPending;impPending=null;S.profile.sexo=ME.sexo;S.profile.setup=true;viewDay=todayIdx();S.meals=S.plans[viewDay];save();
     toast('Backup restaurado',false);go('hoje');return;
   }
   let o;try{o=JSON.parse($('#impTxt').value.trim())}catch(e){return fail('Esse texto não é um backup válido.')}
@@ -1901,9 +2111,11 @@ function remEvents(now){
   r.custom.forEach(c=>ev.push({id:'c'+c.id,at:hm(c.hora),before:0,title:c.nome,body:'Lembrete',done:false}));
   return ev;
 }
-function firedLoad(){try{return JSON.parse(localStorage.getItem('meuprato.fired')||'{}')}catch(e){return{}}}
-function firedSave(o){try{localStorage.setItem('meuprato.fired',JSON.stringify(o))}catch(e){}}
+let firedMem={};
+function firedLoad(){return firedMem}
+function firedSave(o){firedMem=o}
 function remTick(){
+  if(!S||!ME)return;
   const now=new Date(),mins=now.getHours()*60+now.getMinutes(),day=dkey(now);
   let f=firedLoad();if(f.day!==day)f={day,ids:[]};
   remEvents(now).forEach(e=>{
@@ -2046,40 +2258,17 @@ function remChange(t,a){
 }
 
 /* ---------- Fotos de evolução ---------- */
-let progView='medidas',phPose='frente',phSel=[],phMode='lado',phDelId=null,phList=[],phDb=null,phLoaded=false,phErr='',phDate='';
+let progView='medidas',phPose='frente',phSel=[],phMode='lado',phDelId=null,phList=[],phLoaded=false,phErr='',phDate='';
 const PH_POSES=[['frente','Frente'],['lado','Lado'],['costas','Costas']];
-function phOpen(){
-  return new Promise(res=>{
-    try{
-      const r=indexedDB.open('meuprato-fotos',1);
-      r.onupgradeneeded=()=>{r.result.createObjectStore('f',{keyPath:'id'})};
-      r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);
-    }catch(e){res(null)}
-  });
-}
-function phAll(){
-  return new Promise(res=>{
-    try{const q=phDb.transaction('f').objectStore('f').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}
-  });
-}
-function phPut(rec){
-  return new Promise(res=>{
-    if(!phDb)return res(false);
-    try{const tx=phDb.transaction('f','readwrite');tx.objectStore('f').put(rec);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false);tx.onabort=()=>res(false)}catch(e){res(false)}
-  });
-}
-function phRemove(id){
-  return new Promise(res=>{
-    if(!phDb)return res(true);
-    try{const tx=phDb.transaction('f','readwrite');tx.objectStore('f').delete(id);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)}catch(e){res(false)}
-  });
-}
+let phU={};
 async function phInit(){
   if(phLoaded)return;
-  phDb=await phOpen();
-  if(!phDb)phErr='Este navegador não guarda fotos de forma permanente. As fotos ficam só até fechar o app.';
-  else phList=await phAll();
+  try{phList=await api('/api/photos');phErr=''}
+  catch(er){phList=[];phErr='Não consegui carregar as fotos agora. '+er.message}
   phLoaded=true;
+}
+async function phFetch(rs){
+  for(const r of rs){if(phU[r.id])continue;try{phU[r.id]=(await api('/api/photos/'+r.id)).u}catch(er){}}
 }
 const phSorted=()=>phList.slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.at-b.at);
 const phOfPose=()=>phSorted().filter(f=>f.pose===phPose);
@@ -2102,14 +2291,18 @@ async function renderFotos(){
     return`<button class="phthumb${n>=0?' on':''}" data-act="phsel" data-id="${f.id}" aria-pressed="${n>=0}" aria-label="Foto de ${fdate(f.d)}"><img src="${f.t}" alt=""><span class="phd">${fdate(f.d)}</span>${lab?`<span class="phb">${lab}</span>`:''}</button>`;
   }).join('');
   let cmp='';
-  if(sel.length===2){
+  if(sel.length===2&&!(phU[sel[0].id]&&phU[sel[1].id])){
+    cmp='<section class="card"><h2>Comparar</h2><p class="muted center">Carregando as fotos...</p></section>';
+    const ids=sel.map(x=>x.id).join();
+    phFetch(sel).then(()=>{if(curTab()==='progresso'&&progView==='fotos'&&phSel.slice().sort().join()===ids.split(',').sort().join())renderFotos()});
+  }else if(sel.length===2){
     const A=sel[0],B=sel[1],days=Math.round((Date.parse(B.d+'T12:00:00')-Date.parse(A.d+'T12:00:00'))/864e5);
     const pa=medAt(A.d,'peso'),pb=medAt(B.d,'peso'),ca=medAt(A.d,'cintura'),cb=medAt(B.d,'cintura');
     const dif=(a,b,u)=>a!=null&&b!=null?`${fmt(a,1)} ${u} para ${fmt(b,1)} ${u} (${b-a>0?'+':''}${fmt(b-a,1)} ${u})`:'';
     const meds=[pa!=null&&pb!=null?'Peso: '+dif(pa,pb,'kg'):'',ca!=null&&cb!=null?'Cintura: '+dif(ca,cb,'cm'):''].filter(Boolean);
     const view=phMode==='lado'
-      ?`<div class="cmp"><figure><img src="${A.u}" alt="Antes, ${fdate(A.d)}"><figcaption>Antes · ${fdate(A.d)}</figcaption></figure><figure><img src="${B.u}" alt="Depois, ${fdate(B.d)}"><figcaption>Depois · ${fdate(B.d)}</figcaption></figure></div>`
-      :`<div class="cmpo" id="cmpo" style="--v:50%"><img src="${B.u}" alt="Depois, ${fdate(B.d)}"><img class="top" src="${A.u}" alt="Antes, ${fdate(A.d)}"><span class="cl"></span></div><input type="range" min="0" max="100" value="50" data-act="phslide" aria-label="Deslize para comparar antes e depois" style="width:100%;margin-top:10px"><p class="small muted center">Esquerda: antes (${fdate(A.d)}). Direita: depois (${fdate(B.d)}).</p>`;
+      ?`<div class="cmp"><figure><img src="${phU[A.id]}" alt="Antes, ${fdate(A.d)}"><figcaption>Antes · ${fdate(A.d)}</figcaption></figure><figure><img src="${phU[B.id]}" alt="Depois, ${fdate(B.d)}"><figcaption>Depois · ${fdate(B.d)}</figcaption></figure></div>`
+      :`<div class="cmpo" id="cmpo" style="--v:50%"><img src="${phU[B.id]}" alt="Depois, ${fdate(B.d)}"><img class="top" src="${phU[A.id]}" alt="Antes, ${fdate(A.d)}"><span class="cl"></span></div><input type="range" min="0" max="100" value="50" data-act="phslide" aria-label="Deslize para comparar antes e depois" style="width:100%;margin-top:10px"><p class="small muted center">Esquerda: antes (${fdate(A.d)}). Direita: depois (${fdate(B.d)}).</p>`;
     cmp=`<section class="card"><h2>Comparar</h2>
       <div class="chips"><button class="chip" data-act="phmode" data-m="lado" aria-pressed="${phMode==='lado'}">Lado a lado</button><button class="chip" data-act="phmode" data-m="sobre" aria-pressed="${phMode==='sobre'}">Deslizar</button></div>
       ${view}
@@ -2131,7 +2324,7 @@ async function renderFotos(){
       <button class="btn ghost" data-act="phlib">Da galeria</button>
     </div>
     <p class="hint" id="phmsg"${phErr?'':' hidden'} style="margin-top:10px">${esc(phErr)}</p>
-    <p class="small muted" style="margin-top:10px">Tire sempre no mesmo lugar, com a mesma luz e distância, em pé e relaxada, com roupa justa. A cada 2 semanas já dá para ver diferença. As fotos ficam só neste aparelho.</p>
+    <p class="small muted" style="margin-top:10px">Tire sempre no mesmo lugar, com a mesma luz e distância, em pé e relaxada, com roupa justa. A cada 2 semanas já dá para ver diferença. As fotos ficam salvas na sua conta, no servidor.</p>
     <input type="file" id="phCam" data-act="phfile" accept="image/*" capture="environment" hidden>
     <input type="file" id="phLib" data-act="phfile" accept="image/*" hidden>
   </section>
@@ -2146,10 +2339,10 @@ async function phAdd(file){
   try{
     const [u,t]=await Promise.all([toJpeg(file,1000).then(blobURL),toJpeg(file,320).then(blobURL)]);
     const rec={id:uid(),d:phDate||dkey(new Date()),pose:phPose,at:Date.now(),u,t};
-    const ok=await phPut(rec);
-    phList.push(rec);
-    if(phDb&&!ok){phList.pop();return msg('Não consegui guardar a foto. O espaço do aparelho pode estar cheio.')}
-    phErr=phDb?'':phErr;phSel=[rec.id];
+    try{await api('/api/photos',{method:'POST',body:rec})}
+    catch(er){return msg(er.code==='offline'?'Sem conexão. A foto não foi salva; tente de novo quando a internet voltar.':'Não consegui guardar a foto. '+er.message)}
+    phList.push({id:rec.id,d:rec.d,pose:rec.pose,at:rec.at,t:rec.t});phU[rec.id]=rec.u;
+    phErr='';phSel=[rec.id];
     toast('Foto salva',false);
   }catch(e){msg('Não consegui abrir essa foto. Tente outra.');return}
   if(curTab()==='progresso'&&progView==='fotos')renderFotos();
@@ -2169,7 +2362,7 @@ function phClick(a,t){
   if(a==='phdel'){
     if(phDelId!==t.dataset.id){phDelId=t.dataset.id;renderFotos();return true}
     const id=phDelId;phDelId=null;
-    phRemove(id).then(()=>{phList=phList.filter(f=>f.id!==id);phSel=phSel.filter(x=>x!==id);toast('Foto excluída',false);renderFotos()});
+    api('/api/photos/'+id,{method:'DELETE'}).then(()=>{phList=phList.filter(f=>f.id!==id);delete phU[id];phSel=phSel.filter(x=>x!==id);toast('Foto excluída',false);renderFotos()}).catch(er=>toast('Não consegui excluir: '+er.message,false));
     return true;
   }
   return false;
@@ -2342,18 +2535,22 @@ function photoChange(t,a){
 }
 
 /* ---------- navegação e eventos ---------- */
-const TABS=['hoje','cardapio','calcular','progresso','mais','meta','compras','receitas','semana','backup','lembretes'];
-const TABOF={meta:'mais',compras:'mais',receitas:'mais',semana:'mais',backup:'mais',lembretes:'mais'};
+const TABS=['hoje','cardapio','calcular','progresso','mais','meta','compras','receitas','semana','backup','lembretes','conta'];
+const TABOF={meta:'mais',compras:'mais',receitas:'mais',semana:'mais',backup:'mais',lembretes:'mais',conta:'mais'};
 const curTab=()=>{const h=location.hash.slice(1);return TABS.includes(h)?h:'hoje'};
 function render(){
-  const t=curTab();
+  if(!S||!ME)return;
+  let t=curTab();
+  if(S.profile.setup===false&&t!=='meta'){location.hash='#meta';return}
+  if(S.profile.setup!==false)document.body.classList.remove('setup');
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===(TABOF[t]||t)?'page':'false'));
-  ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup,lembretes:renderLembretes})[t]();
+  ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup,lembretes:renderLembretes,conta:renderConta})[t]();
 }
 function go(t){
   if(location.hash==='#'+t){render();window.scrollTo(0,0)}else location.hash='#'+t;
 }
 window.addEventListener('hashchange',()=>{closeSheet();render();window.scrollTo(0,0)});
+function go2(t){if(S&&ME)go(t)}
 
 document.addEventListener('click',e=>{
   const tabBtn=e.target.closest('[data-tab]');
@@ -2361,6 +2558,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('#toast-act')){undo();return}
   const t=e.target.closest('[data-act]');if(!t)return;
   const a=t.dataset.act;
+  if(acctClick(a,t))return;
   if(featureClick(a,t))return;
   if(a==='closesheet'){closeSheet();return}
   if(a==='cat'){
@@ -2430,18 +2628,15 @@ document.addEventListener('change',e=>{
   if(a==='time'){m.hora=t.value;save()}
 });
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet()});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet();
+  if(e.key==='Enter'&&document.body.classList.contains('authing')&&e.target.tagName==='INPUT'){e.preventDefault();doAuth()}
+});
 
 /* ---------- início ---------- */
-S=load();const fresh=!S;
-if(!S)S=defaults();
-viewDay=todayIdx();S.meals=S.plans[viewDay];
-if(fresh){S.updated=0;save(true)}
-try{localStorage.setItem('meuprato.visits',String((+localStorage.getItem('meuprato.visits')||0)+1))}catch(e){}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 initSample();initDownloads();bindPhoto();remStart();
-render();
-initCloud().then(()=>{const t=curTab();if(t==='hoje'||t==='mais'||t==='cardapio'||t==='progresso')render()});
+boot();
 </script>
 
 </body></html>
