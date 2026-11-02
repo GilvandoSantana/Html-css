@@ -233,6 +233,16 @@ body .photo-btn{display:none!important}
 @media (max-width:380px){.hero .big{font-size:56px}.res{grid-template-columns:repeat(2,1fr)}.greet{font-size:30px}}
 
 /* novidades */
+.remck{display:flex;align-items:center;gap:12px;min-height:48px;font-weight:700;cursor:pointer}
+.remck input{width:24px;height:24px;accent-color:var(--rind);flex:none}
+.remrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+#rbanner{position:fixed;z-index:60;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));display:flex;align-items:center;gap:12px;background:var(--rind);color:var(--on-rind,#fff);padding:14px 16px;border-radius:20px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+#rbanner[hidden]{display:none}
+#rbanner>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#rbanner b{font-size:16px}#rbanner span{font-size:13px;opacity:.9}
+#rbanner .btn{min-height:40px;padding:6px 14px;background:#fff;color:var(--rind)}
+#rbanner .ib{flex:none;color:inherit;background:transparent;border:0}
+#rbanner .ib svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
 .warnc{border:2px solid var(--warn)}
 .est-card{display:none}
 .photo-yes .est-card{display:block}
@@ -1546,6 +1556,7 @@ function renderMais(){
   $('#view').innerHTML=`
   <button class="navcard" data-tab="meta"><span><b>Meta e dados</b><span>Calorias, proteína e água por dia.</span></span>›</button>
   <button class="navcard" data-tab="compras"><span><b>Lista de compras</b><span>Tudo o que o cardápio da semana pede.</span></span>›</button>
+  <button class="navcard" data-tab="lembretes"><span><b>Lembretes e som</b><span>Aviso nos horários das refeições, água e treino.</span></span>›</button>
   <button class="navcard" data-tab="semana"><span><b>Resumo da semana</b><span>Médias, dias na meta e texto para enviar.</span></span>›</button>
   <button class="navcard" data-tab="backup"><span><b>Backup dos dados</b><span>Salvar e restaurar tudo.</span></span>›</button>
   <button class="navcard" data-tab="receitas"><span><b>Receitas leves</b><span>Doces e salgados com as calorias calculadas.</span></span>›</button>
@@ -1649,6 +1660,7 @@ function featureClick(a,t){
 }
 function featureChange(t,a){
   if(photoChange(t,a))return true;
+  if(remChange(t,a))return true;
   if(a==='impfile'){readImport(t.files&&t.files[0]);t.value='';return true}
   if(a==='xgrams'){
     const li=t.closest('[data-x]'),lg=logOf(dkey(new Date()));
@@ -1759,6 +1771,7 @@ function bkImport(){
   err.hidden=true;btn.textContent='Confirmar: substituir meus dados atuais';
 }
 function weekClickHandlers(a,t){
+  if(remClick(a,t))return true;
   if(a==='wk-'){weekOff--;renderSemana();return true}
   if(a==='wk+'){if(weekOff<0){weekOff++;renderSemana()}return true}
   if(a==='weekcopy'){copyText(weekText(weekOff),'Resumo copiado');return true}
@@ -1778,6 +1791,217 @@ function readImport(f){
   if(!f)return;const r=new FileReader();
   r.onload=()=>{$('#impTxt').value=String(r.result||'').slice(0,5e6)};
   r.readAsText(f);
+}
+
+/* ---------- Lembretes: avisos, som e calendário ---------- */
+const REM_DEF={meals:true,before:0,sound:true,tone:'sino',notif:false,water:{on:false,every:2},treino:{on:false,hora:'17:30'},custom:[]};
+function remCfg(){
+  const r=S.rem=S.rem||{};
+  Object.keys(REM_DEF).forEach(k=>{if(r[k]===undefined)r[k]=JSON.parse(JSON.stringify(REM_DEF[k]))});
+  return r;
+}
+const hm=h=>{const p=String(h||'').split(':');return(+p[0]||0)*60+(+p[1]||0)};
+const hmFmt=m=>pad(Math.floor(m/60)%24)+':'+pad(m%60);
+let audioCtx=null;
+function unlockAudio(){
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+    if(!audioCtx)audioCtx=new AC();
+    if(audioCtx.state==='suspended')audioCtx.resume();
+  }catch(e){}
+}
+const TONES={
+  sino:{n:'Sino',seq:[[880,0,.35],[1175,.4,.55]],type:'sine'},
+  suave:{n:'Suave',seq:[[523,0,.3],[659,.35,.3],[784,.7,.5]],type:'sine'},
+  alerta:{n:'Alerta',seq:[[1000,0,.15],[1000,.25,.15],[1000,.5,.15]],type:'square'}
+};
+function playTone(name,times){
+  try{
+    unlockAudio();if(!audioCtx)return;
+    const t=TONES[name]||TONES.sino,n=times||2;
+    for(let k=0;k<n;k++)t.seq.forEach(([f,at,d])=>{
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t0=audioCtx.currentTime+k*1.6+at;
+      o.type=t.type;o.frequency.value=f;o.connect(g);g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0.0001,t0);g.gain.exponentialRampToValueAtTime(t.type==='square'?0.12:0.35,t0+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+d);o.start(t0);o.stop(t0+d+0.05);
+    });
+  }catch(e){}
+}
+let swReg=null;
+function initSW(){
+  try{
+    if(!SA||!('serviceWorker' in navigator)||!/^https?:$/.test(location.protocol))return;
+    navigator.serviceWorker.register('sw.js').then(r=>{swReg=r}).catch(()=>{});
+  }catch(e){}
+}
+const notifSupported=()=>typeof Notification!=='undefined';
+const notifPerm=()=>notifSupported()?Notification.permission:'unsupported';
+async function showSystemNotif(title,body,tag){
+  if(!notifSupported()||Notification.permission!=='granted')return;
+  try{
+    if(swReg&&swReg.showNotification){await swReg.showNotification(title,{body,tag,icon:'icon.png',badge:'icon.png',renotify:true});return}
+    if('serviceWorker' in navigator){const r=await navigator.serviceWorker.ready;if(r&&r.showNotification){await r.showNotification(title,{body,tag,icon:'icon.png',renotify:true});return}}
+    new Notification(title,{body,tag,icon:'icon.png'});
+  }catch(e){}
+}
+/* eventos do dia */
+function remEvents(now){
+  const r=remCfg(),key=dkey(now),lg=getLog(key),ev=[];
+  if(r.meals)planOf(dayIdx(now)).forEach(m=>{
+    if(!m.items.length)return;
+    const t=sumItems(m.items),names=m.items.slice(0,3).map(i=>{const f=food(i.f);return f?f.n:''}).filter(Boolean).join(', ');
+    ev.push({id:'m'+m.id,at:hm(m.hora),before:r.before,title:'Hora do '+String(m.nome).toLowerCase(),body:fmt(t.k)+' kcal · '+names,meal:m,done:m.items.every(i=>lg.eaten[i.id])});
+  });
+  if(r.water.on){
+    const cups=Math.max(1,Math.ceil(calcMeta(S.profile).agua/0.25)),ev0=Math.max(1,+r.water.every||2);
+    for(let m=8*60;m<=20*60;m+=ev0*60)ev.push({id:'w'+m,at:m,before:0,title:'Hora de beber água',body:'Beba um copo agora. Meta de hoje: '+cups+' copos.',done:lg.water>=cups});
+  }
+  if(r.treino.on&&dayIdx(now)<5)ev.push({id:'t',at:hm(r.treino.hora),before:0,title:'Hora do treino',body:'Bom treino! Depois marque em Hoje.',done:lg.treino});
+  r.custom.forEach(c=>ev.push({id:'c'+c.id,at:hm(c.hora),before:0,title:c.nome,body:'Lembrete',done:false}));
+  return ev;
+}
+function firedLoad(){try{return JSON.parse(localStorage.getItem('meuprato.fired')||'{}')}catch(e){return{}}}
+function firedSave(o){try{localStorage.setItem('meuprato.fired',JSON.stringify(o))}catch(e){}}
+function remTick(){
+  const now=new Date(),mins=now.getHours()*60+now.getMinutes(),day=dkey(now);
+  let f=firedLoad();if(f.day!==day)f={day,ids:[]};
+  remEvents(now).forEach(e=>{
+    const start=e.at-e.before;
+    if(mins<start||mins>e.at+15||e.done||f.ids.includes(e.id))return;
+    f.ids.push(e.id);firedSave(f);remFire(e);
+  });
+}
+function remFire(e){
+  const r=remCfg();
+  if(r.sound)playTone(r.tone,2);
+  if(r.notif)showSystemNotif(e.title,e.body,e.id);
+  remBanner(e);
+}
+function remBanner(e){
+  let b=document.getElementById('rbanner');
+  if(!b){b=document.createElement('div');b.id='rbanner';b.setAttribute('role','alert');document.body.appendChild(b)}
+  b.innerHTML=`<div><b>${esc(e.title)}</b><span>${esc(e.body)}</span></div>${e.meal?`<button class="btn" data-act="rem-eat" data-m="${e.meal.id}">Já comi</button>`:''}<button class="ib" data-act="rem-close" aria-label="Fechar aviso">${'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>'}</button>`;
+  b.hidden=false;
+}
+function remStart(){
+  initSW();
+  setInterval(remTick,20000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)remTick()});
+  setTimeout(remTick,1500);
+  document.addEventListener('pointerdown',unlockAudio,{once:true});
+}
+/* calendário (.ics) para avisar com o app fechado */
+function icsEsc(t){return String(t).replace(/\\/g,'\\\\').replace(/;/g,'\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
+function buildICS(){
+  const r=remCfg(),today=new Date(),stamp=dkey(today).replace(/-/g,''),BY=['MO','TU','WE','TH','FR','SA','SU'];
+  const ev=[],ymd=stamp,mk=(title,mins,by,before)=>{
+    const s=ymd+'T'+pad(Math.floor(mins/60))+pad(mins%60)+'00',e=mins+10,en=ymd+'T'+pad(Math.floor(e/60)%24)+pad(e%60)+'00';
+    ev.push(['BEGIN:VEVENT','UID:meuprato-'+Math.random().toString(36).slice(2)+'@meuprato','DTSTAMP:'+ymd+'T000000Z','DTSTART:'+s,'DTEND:'+en,
+      'RRULE:FREQ=WEEKLY;BYDAY='+by.join(','),'SUMMARY:'+icsEsc(title),'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(title),'TRIGGER:-PT'+(before||0)+'M','END:VALARM','END:VEVENT'].join('\r\n'));
+  };
+  const groups={};
+  for(let d=0;d<7;d++)planOf(d).forEach(m=>{if(!m.items.length)return;const k=m.nome+'|'+m.hora;(groups[k]=groups[k]||{nome:m.nome,hora:m.hora,days:[]}).days.push(BY[d])});
+  if(r.meals)Object.values(groups).forEach(g=>mk('Hora do '+g.nome.toLowerCase(),hm(g.hora),g.days,r.before));
+  if(r.water.on)for(let m=8*60;m<=20*60;m+=Math.max(1,+r.water.every||2)*60)mk('Beber água',m,BY,0);
+  if(r.treino.on)mk('Treino',hm(r.treino.hora),BY.slice(0,5),0);
+  r.custom.forEach(c=>mk(c.nome,hm(c.hora),BY,0));
+  return['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Meu Prato//PT','CALSCALE:GREGORIAN'].concat(ev).concat(['END:VCALENDAR']).join('\r\n')+'\r\n';
+}
+async function exportICS(){
+  const data=buildICS(),name='meu-prato-lembretes.ics';
+  if(!SA&&dlFn){dlFn.save({filename:name,data}).then(()=>toast('Arquivo salvo',false)).catch(()=>toast('Não foi possível salvar o arquivo',false));return}
+  try{
+    const url=URL.createObjectURL(new Blob([data],{type:'text/calendar'})),a=document.createElement('a');
+    a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),4000);
+    toast('Abra o arquivo e escolha "Adicionar tudo" ao Calendário',false);
+  }catch(e){toast('Não consegui gerar o arquivo neste navegador',false)}
+}
+/* tela */
+function renderLembretes(){
+  const r=remCfg(),perm=notifPerm();
+  const opt=(list,sel)=>list.map(([v,t])=>`<option value="${v}"${String(v)===String(sel)?' selected':''}>${t}</option>`).join('');
+  let st;
+  if(perm==='granted')st=r.notif?'Avisos do celular ligados.':'Permissão dada. Ligue abaixo para receber os avisos.';
+  else if(perm==='denied')st='As notificações estão bloqueadas. Libere em Ajustes do iPhone, em Notificações, no app Meu Prato.';
+  else if(perm==='unsupported')st='Este navegador não mostra notificações. No iPhone, toque em Compartilhar, depois em "Adicionar à Tela de Início", e abra o app pelo ícone.';
+  else st='Toque em Ativar para permitir as notificações.';
+  const rows=r.custom.map(c=>`<li class="remrow"><span><b>${esc(c.nome)}</b><br><span class="small muted">${esc(c.hora)}, todos os dias</span></span><button class="link danger" data-act="rem-delc" data-id="${c.id}">Excluir</button></li>`).join('');
+  $('#view').innerHTML=back()+`
+  <section class="card"><h2>Avisos no celular</h2>
+    <p class="small muted">${esc(st)}</p>
+    ${perm==='default'?'<button class="btn block" data-act="rem-perm" style="margin-top:12px">Ativar notificações</button>':''}
+    ${perm==='granted'?`<label class="remck"><input type="checkbox" data-act="rem-notif"${r.notif?' checked':''}><span>Mostrar notificação</span></label>`:''}
+    <label class="remck"><input type="checkbox" data-act="rem-sound"${r.sound?' checked':''}><span>Tocar som</span></label>
+    <label class="f full" style="margin-top:8px">Som<select data-act="rem-tone">${opt(Object.keys(TONES).map(k=>[k,TONES[k].n]),r.tone)}</select></label>
+    <button class="btn ghost block" data-act="rem-test" style="margin-top:12px">Testar aviso</button>
+    <p class="small muted" style="margin-top:10px">Com o app aberto ou em segundo plano recente, o aviso toca na hora. Com o app fechado, use o Calendário abaixo.</p>
+  </section>
+  <section class="card"><h2>Refeições</h2>
+    <label class="remck"><input type="checkbox" data-act="rem-meals"${r.meals?' checked':''}><span>Avisar no horário de cada refeição</span></label>
+    <label class="f full" style="margin-top:8px">Avisar com antecedência<select data-act="rem-before">${opt([[0,'No horário'],[5,'5 minutos antes'],[10,'10 minutos antes'],[15,'15 minutos antes'],[30,'30 minutos antes']],r.before)}</select></label>
+    <p class="small muted" style="margin-top:8px">Os horários são os do seu Cardápio. Se você mudar o horário lá, o aviso acompanha.</p>
+  </section>
+  <section class="card"><h2>Outros lembretes</h2>
+    <label class="remck"><input type="checkbox" data-act="rem-water"${r.water.on?' checked':''}><span>Beber água</span></label>
+    <label class="f full" style="margin:6px 0 10px">A cada<select data-act="rem-wevery">${opt([[1,'1 hora'],[2,'2 horas'],[3,'3 horas']],r.water.every)}</select></label>
+    <label class="remck"><input type="checkbox" data-act="rem-treino"${r.treino.on?' checked':''}><span>Treino (segunda a sexta)</span></label>
+    <label class="f full" style="margin:6px 0 10px">Horário do treino<input type="time" data-act="rem-thora" value="${esc(r.treino.hora)}"></label>
+    <h2 style="font-size:17px;margin-top:14px">Seus lembretes</h2>
+    <ul class="items">${rows||'<li class="small muted">Nenhum ainda.</li>'}</ul>
+    <div class="grid2" style="margin-top:10px">
+      <label class="f">Nome<input id="rc-nome" autocomplete="off" placeholder="Ex.: Tomar vitamina"></label>
+      <label class="f">Horário<input id="rc-hora" type="time" value="09:00"></label>
+    </div>
+    <button class="btn ghost block" data-act="rem-addc" style="margin-top:12px">Adicionar lembrete</button>
+  </section>
+  <section class="card"><h2>Avisos com o app fechado</h2>
+    <p class="small muted">Um site não consegue avisar quando está totalmente fechado. Para o iPhone tocar mesmo assim, adicione os horários ao Calendário. Ele cria alertas semanais com som nos horários das refeições e dos lembretes ligados acima.</p>
+    <button class="btn block" data-act="rem-ics" style="margin-top:12px">Adicionar ao Calendário</button>
+    <p class="small muted" style="margin-top:8px">Se mudar horários ou lembretes depois, gere e adicione de novo. Apague os eventos antigos do calendário "Meu Prato" para não duplicar.</p>
+  </section>`;
+}
+function remClick(a,t){
+  const r=remCfg();
+  if(a==='rem-close'){const b=$('#rbanner');if(b)b.hidden=true;return true}
+  if(a==='rem-eat'){
+    const lg=logOf(dkey(new Date())),m=planOf(todayIdx()).find(x=>x.id===t.dataset.m);
+    if(m)m.items.forEach(i=>{lg.eaten[i.id]={f:i.f,g:i.g}});
+    save();const b=$('#rbanner');if(b)b.hidden=true;if(curTab()==='hoje')renderHoje();toast('Refeição marcada',false);return true;
+  }
+  if(a==='rem-perm'){
+    unlockAudio();
+    if(!notifSupported())return true;
+    Notification.requestPermission().then(p=>{if(p==='granted'){r.notif=true;save();showSystemNotif('Avisos ligados','Você vai receber o lembrete das refeições.','teste')}if(curTab()==='lembretes')renderLembretes()});
+    return true;
+  }
+  if(a==='rem-test'){
+    unlockAudio();remFire({id:'teste',title:'Hora do almoço (teste)',body:'É assim que o aviso vai aparecer.',done:false});return true;
+  }
+  if(a==='rem-ics'){exportICS();return true}
+  if(a==='rem-addc'){
+    const n=$('#rc-nome').value.trim().slice(0,40),h=$('#rc-hora').value;
+    if(!n||!h){toast('Informe o nome e o horário',false);return true}
+    if(r.custom.length>=20){toast('Limite de 20 lembretes',false);return true}
+    r.custom.push({id:uid(),nome:n,hora:h});save();renderLembretes();toast('Lembrete adicionado',false);return true;
+  }
+  if(a==='rem-delc'){r.custom=r.custom.filter(c=>c.id!==t.dataset.id);save();renderLembretes();return true}
+  return false;
+}
+function remChange(t,a){
+  if(a.indexOf('rem-')!==0)return false;
+  const r=remCfg();
+  if(a==='rem-notif')r.notif=t.checked;
+  else if(a==='rem-sound'){r.sound=t.checked;if(t.checked){unlockAudio();playTone(r.tone,1)}}
+  else if(a==='rem-tone'){r.tone=t.value;unlockAudio();playTone(r.tone,1)}
+  else if(a==='rem-meals')r.meals=t.checked;
+  else if(a==='rem-before')r.before=+t.value||0;
+  else if(a==='rem-water')r.water.on=t.checked;
+  else if(a==='rem-wevery')r.water.every=+t.value||2;
+  else if(a==='rem-treino')r.treino.on=t.checked;
+  else if(a==='rem-thora'){if(t.value)r.treino.hora=t.value}
+  else return false;
+  save();return true;
 }
 
 /* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
@@ -1941,13 +2165,13 @@ function photoChange(t,a){
 }
 
 /* ---------- navegação e eventos ---------- */
-const TABS=['hoje','cardapio','calcular','progresso','mais','meta','compras','receitas','semana','backup'];
-const TABOF={meta:'mais',compras:'mais',receitas:'mais',semana:'mais',backup:'mais'};
+const TABS=['hoje','cardapio','calcular','progresso','mais','meta','compras','receitas','semana','backup','lembretes'];
+const TABOF={meta:'mais',compras:'mais',receitas:'mais',semana:'mais',backup:'mais',lembretes:'mais'};
 const curTab=()=>{const h=location.hash.slice(1);return TABS.includes(h)?h:'hoje'};
 function render(){
   const t=curTab();
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===(TABOF[t]||t)?'page':'false'));
-  ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup})[t]();
+  ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup,lembretes:renderLembretes})[t]();
 }
 function go(t){
   if(location.hash==='#'+t){render();window.scrollTo(0,0)}else location.hash='#'+t;
@@ -2037,7 +2261,7 @@ viewDay=todayIdx();S.meals=S.plans[viewDay];
 if(fresh){S.updated=0;save(true)}
 try{localStorage.setItem('meuprato.visits',String((+localStorage.getItem('meuprato.visits')||0)+1))}catch(e){}
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
-initSample();initDownloads();bindPhoto();
+initSample();initDownloads();bindPhoto();remStart();
 render();
 initCloud().then(()=>{const t=curTab();if(t==='hoje'||t==='mais'||t==='cardapio'||t==='progresso')render()});
 </script>
