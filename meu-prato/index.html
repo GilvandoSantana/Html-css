@@ -233,6 +233,22 @@ body .photo-btn{display:none!important}
 @media (max-width:380px){.hero .big{font-size:56px}.res{grid-template-columns:repeat(2,1fr)}.greet{font-size:30px}}
 
 /* novidades */
+.seg{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--surface2);margin-bottom:14px}
+.seg button{flex:1;min-height:44px;border:0;border-radius:999px;background:transparent;font-weight:800;color:var(--muted)}
+.seg button[aria-selected="true"]{background:var(--rind);color:var(--on-rind)}
+.phgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.phthumb{position:relative;padding:0;border:2px solid var(--line);border-radius:14px;overflow:hidden;background:var(--surface2);aspect-ratio:3/4}
+.phthumb.on{border-color:var(--flesh);box-shadow:0 0 0 3px var(--flesh-soft)}
+.phthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.phd{position:absolute;left:0;right:0;bottom:0;padding:14px 6px 5px;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.phb{position:absolute;top:6px;left:6px;background:var(--flesh);color:#fff;font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+.cmp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cmp figure{margin:0}.cmp img{width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:14px;display:block}
+.cmp figcaption{text-align:center;font-size:12px;font-weight:800;color:var(--muted);margin-top:6px}
+.cmpo{position:relative;width:100%;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:var(--surface2)}
+.cmpo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmpo img.top{clip-path:inset(0 calc(100% - var(--v)) 0 0)}
+.cmpo .cl{position:absolute;top:0;bottom:0;left:var(--v);width:3px;margin-left:-1.5px;background:#fff;box-shadow:0 0 6px rgba(0,0,0,.5)}
 .remck{display:flex;align-items:center;gap:12px;min-height:48px;font-weight:700;cursor:pointer}
 .remck input{width:24px;height:24px;accent-color:var(--rind);flex:none}
 .remrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
@@ -411,6 +427,28 @@ const RAW=[
 ['f_milk','Milkshake','fora',140,3,22,4,['copo','copos',400,true]],
 ['f_cerveja','Cerveja','fora',43,0.3,3.6,0,['lata','latas',350,true]],
 ['f_salgado','Salgado assado','fora',300,9,32,15,['salgado','salgados',80,true]],
+['camaraocru','Camarão cru (limpo)','prot',85,18,0.2,1],
+['camaraogrelh','Camarão grelhado','prot',106,20.5,0.9,2],
+['camaraofrito','Camarão frito empanado','prot',245,17,15,13],
+['camaraoalho','Camarão ao alho e óleo','prot',145,18,1.5,7.5],
+['camaraomanteiga','Camarão na manteiga','prot',165,19,1,9.5],
+['camaraocasca','Camarão inteiro com casca (cozido)','prot',50,10,0.1,0.7],
+['camaraocascacru','Camarão inteiro com casca (cru)','prot',42,8.5,0.1,0.6],
+['camaraocascafrito','Camarão inteiro com casca (frito)','prot',140,12,6,7.5],
+['camaraoseco','Camarão seco','prot',285,57,0,5],
+['figadoboifrito','Fígado de boi frito acebolado','prot',215,27,4,10],
+['figadoboicru','Fígado de boi (cru)','prot',135,20,4,3.6],
+['figadogal','Fígado de galinha cozido','prot',167,24.5,0.9,6.5],
+['figadogalfrito','Fígado de galinha frito acebolado','prot',205,26,2,10],
+['figadogalcru','Fígado de galinha (cru)','prot',119,17,0.7,4.8],
+['moela','Moela de galinha cozida','prot',155,30,0,2.7],
+['moelarefog','Moela de galinha refogada','prot',180,26,2,8],
+['moelacru','Moela de galinha (crua)','prot',94,17.7,0.6,2.1],
+['coracao','Coração de galinha cozido','prot',185,26,0.1,8],
+['coracaograelh','Coração de galinha grelhado','prot',200,25,0,10.5],
+['coracaocru','Coração de galinha (cru)','prot',153,15.6,0.1,9.3],
+['f_espcoracao','Espetinho de coração de galinha','fora',200,25,0,10.5,['espetinho','espetinhos',70,true]],
+['f_camarao_rest','Camarão frito (porção de restaurante)','fora',260,17,16,14,['porção','porções',200]],
 ['ovofrito','Ovo frito','prot',240,15.6,1.2,18.6,['ovo','ovos',50,true]],
 ['ovomex','Ovo mexido','prot',190,12.5,1.5,14.5,['ovo','ovos',60,true]],
 ['ovocru','Ovo inteiro (cru)','prot',143,13,1.6,9.5,['ovo','ovos',50,true]],
@@ -1494,6 +1532,7 @@ function chartSVG(pts,sel,label){
   return`<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${label}">${grid}${line}${dots}${xl}${hits}</svg>`;
 }
 function renderProg(){
+  if(progView==='fotos'){renderFotos();return}
   const unit=progMetric==='peso'?'kg':'cm',nome=progMetric==='peso'?'Peso':'Cintura';
   const pts=S.medidas.filter(x=>x[progMetric]!=null).map(x=>({d:x.d,v:x[progMetric],t:Date.parse(x.d+'T12:00:00')}));
   const sel=progSel!=null&&progSel<pts.length?progSel:pts.length-1;
@@ -1508,7 +1547,7 @@ function renderProg(){
   const last=S.medidas[S.medidas.length-1];
   const next=last?dkey(new Date(Date.parse(last.d+'T12:00:00')+14*864e5)):'';
   const rows=S.medidas.slice().reverse().map(x=>`<span>${fdate(x.d)}</span><span>${x.peso!=null?fmt(x.peso,1)+' kg':'-'}</span><span>${x.cintura!=null?fmt(x.cintura,1)+' cm':'-'}</span><button class="link danger" data-act="delmed" data-d="${x.d}" aria-label="Excluir medida de ${fdate(x.d)}">Excluir</button>`).join('');
-  $('#view').innerHTML=`
+  $('#view').innerHTML=progTabs()+`
   <section class="card"><h2>Registrar medidas</h2>
     <div class="grid2">
       <label class="f full">Data<input id="m-data" type="date" value="${dkey(new Date())}"></label>
@@ -1660,6 +1699,7 @@ function featureClick(a,t){
 }
 function featureChange(t,a){
   if(photoChange(t,a))return true;
+  if(phChange(t,a))return true;
   if(remChange(t,a))return true;
   if(a==='impfile'){readImport(t.files&&t.files[0]);t.value='';return true}
   if(a==='xgrams'){
@@ -1771,6 +1811,7 @@ function bkImport(){
   err.hidden=true;btn.textContent='Confirmar: substituir meus dados atuais';
 }
 function weekClickHandlers(a,t){
+  if(phClick(a,t))return true;
   if(remClick(a,t))return true;
   if(a==='wk-'){weekOff--;renderSemana();return true}
   if(a==='wk+'){if(weekOff<0){weekOff++;renderSemana()}return true}
@@ -2004,6 +2045,142 @@ function remChange(t,a){
   save();return true;
 }
 
+/* ---------- Fotos de evolução ---------- */
+let progView='medidas',phPose='frente',phSel=[],phMode='lado',phDelId=null,phList=[],phDb=null,phLoaded=false,phErr='',phDate='';
+const PH_POSES=[['frente','Frente'],['lado','Lado'],['costas','Costas']];
+function phOpen(){
+  return new Promise(res=>{
+    try{
+      const r=indexedDB.open('meuprato-fotos',1);
+      r.onupgradeneeded=()=>{r.result.createObjectStore('f',{keyPath:'id'})};
+      r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);
+    }catch(e){res(null)}
+  });
+}
+function phAll(){
+  return new Promise(res=>{
+    try{const q=phDb.transaction('f').objectStore('f').getAll();q.onsuccess=()=>res(q.result||[]);q.onerror=()=>res([])}catch(e){res([])}
+  });
+}
+function phPut(rec){
+  return new Promise(res=>{
+    if(!phDb)return res(false);
+    try{const tx=phDb.transaction('f','readwrite');tx.objectStore('f').put(rec);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false);tx.onabort=()=>res(false)}catch(e){res(false)}
+  });
+}
+function phRemove(id){
+  return new Promise(res=>{
+    if(!phDb)return res(true);
+    try{const tx=phDb.transaction('f','readwrite');tx.objectStore('f').delete(id);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)}catch(e){res(false)}
+  });
+}
+async function phInit(){
+  if(phLoaded)return;
+  phDb=await phOpen();
+  if(!phDb)phErr='Este navegador não guarda fotos de forma permanente. As fotos ficam só até fechar o app.';
+  else phList=await phAll();
+  phLoaded=true;
+}
+const phSorted=()=>phList.slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:a.at-b.at);
+const phOfPose=()=>phSorted().filter(f=>f.pose===phPose);
+const blobURL=b=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(new Error('read'));r.readAsDataURL(b)});
+function medAt(d,field){
+  let v=null;S.medidas.forEach(x=>{if(x[field]!=null&&x.d<=d)v=x[field]});return v;
+}
+function progTabs(){
+  return`<div class="seg" role="tablist" aria-label="Progresso"><button role="tab" aria-selected="${progView==='medidas'}" data-act="pview" data-v="medidas">Medidas</button><button role="tab" aria-selected="${progView==='fotos'}" data-act="pview" data-v="fotos">Fotos</button></div>`;
+}
+async function renderFotos(){
+  const first=!phLoaded;
+  if(first){$('#view').innerHTML=progTabs()+'<section class="card"><p class="muted center">Carregando fotos...</p></section>';await phInit();if(progView!=='fotos'||curTab()!=='progresso')return}
+  if(!phDate)phDate=dkey(new Date());
+  const list=phOfPose();
+  phSel=phSel.filter(id=>list.some(f=>f.id===id));
+  const sel=phSel.map(id=>list.find(f=>f.id===id)).sort((a,b)=>a.d<b.d?-1:1);
+  const thumbs=list.slice().reverse().map(f=>{
+    const n=phSel.indexOf(f.id),lab=sel.length===2?(sel[0].id===f.id?'Antes':sel[1].id===f.id?'Depois':''):(n>=0?'1':'');
+    return`<button class="phthumb${n>=0?' on':''}" data-act="phsel" data-id="${f.id}" aria-pressed="${n>=0}" aria-label="Foto de ${fdate(f.d)}"><img src="${f.t}" alt=""><span class="phd">${fdate(f.d)}</span>${lab?`<span class="phb">${lab}</span>`:''}</button>`;
+  }).join('');
+  let cmp='';
+  if(sel.length===2){
+    const A=sel[0],B=sel[1],days=Math.round((Date.parse(B.d+'T12:00:00')-Date.parse(A.d+'T12:00:00'))/864e5);
+    const pa=medAt(A.d,'peso'),pb=medAt(B.d,'peso'),ca=medAt(A.d,'cintura'),cb=medAt(B.d,'cintura');
+    const dif=(a,b,u)=>a!=null&&b!=null?`${fmt(a,1)} ${u} para ${fmt(b,1)} ${u} (${b-a>0?'+':''}${fmt(b-a,1)} ${u})`:'';
+    const meds=[pa!=null&&pb!=null?'Peso: '+dif(pa,pb,'kg'):'',ca!=null&&cb!=null?'Cintura: '+dif(ca,cb,'cm'):''].filter(Boolean);
+    const view=phMode==='lado'
+      ?`<div class="cmp"><figure><img src="${A.u}" alt="Antes, ${fdate(A.d)}"><figcaption>Antes · ${fdate(A.d)}</figcaption></figure><figure><img src="${B.u}" alt="Depois, ${fdate(B.d)}"><figcaption>Depois · ${fdate(B.d)}</figcaption></figure></div>`
+      :`<div class="cmpo" id="cmpo" style="--v:50%"><img src="${B.u}" alt="Depois, ${fdate(B.d)}"><img class="top" src="${A.u}" alt="Antes, ${fdate(A.d)}"><span class="cl"></span></div><input type="range" min="0" max="100" value="50" data-act="phslide" aria-label="Deslize para comparar antes e depois" style="width:100%;margin-top:10px"><p class="small muted center">Esquerda: antes (${fdate(A.d)}). Direita: depois (${fdate(B.d)}).</p>`;
+    cmp=`<section class="card"><h2>Comparar</h2>
+      <div class="chips"><button class="chip" data-act="phmode" data-m="lado" aria-pressed="${phMode==='lado'}">Lado a lado</button><button class="chip" data-act="phmode" data-m="sobre" aria-pressed="${phMode==='sobre'}">Deslizar</button></div>
+      ${view}
+      <p class="center small" style="margin-top:10px"><b>${days} ${days===1?'dia':'dias'} entre as fotos</b></p>
+      ${meds.map(m=>`<p class="center small muted">${esc(m)}</p>`).join('')}
+      <p class="small muted center" style="margin-top:8px">Compare com a mesma luz, a mesma distância e a mesma pose. Uma foto de dias diferentes engana.</p>
+    </section>`;
+  }else if(list.length>=2){
+    cmp=`<section class="card"><h2>Comparar</h2><p class="small muted">Toque em duas fotos da lista para comparar.</p><button class="btn block" data-act="phauto" style="margin-top:10px">Primeira e mais recente</button></section>`;
+  }
+  const one=sel.length===1?sel[0]:null;
+  const del=(sel.length?`<section class="card"><h2>Foto selecionada</h2>${sel.map(f=>`<div class="remrow"><span>${fdate(f.d)}</span><button class="link danger" data-act="phdel" data-id="${f.id}">${phDelId===f.id?'Toque de novo para excluir':'Excluir foto'}</button></div>`).join('')}</section>`:'');
+  $('#view').innerHTML=progTabs()+`
+  <section class="card"><h2>Nova foto</h2>
+    <div class="chips" role="group" aria-label="Posição">${PH_POSES.map(([k,t])=>`<button class="chip" data-act="phpose" data-p="${k}" aria-pressed="${phPose===k}">${t}</button>`).join('')}</div>
+    <label class="f full">Data da foto<input type="date" data-act="phdate" value="${esc(phDate)}" max="${dkey(new Date())}"></label>
+    <div class="grid2" style="margin-top:12px">
+      <button class="btn" data-act="phcam">Tirar foto</button>
+      <button class="btn ghost" data-act="phlib">Da galeria</button>
+    </div>
+    <p class="hint" id="phmsg"${phErr?'':' hidden'} style="margin-top:10px">${esc(phErr)}</p>
+    <p class="small muted" style="margin-top:10px">Tire sempre no mesmo lugar, com a mesma luz e distância, em pé e relaxada, com roupa justa. A cada 2 semanas já dá para ver diferença. As fotos ficam só neste aparelho.</p>
+    <input type="file" id="phCam" data-act="phfile" accept="image/*" capture="environment" hidden>
+    <input type="file" id="phLib" data-act="phfile" accept="image/*" hidden>
+  </section>
+  ${cmp}
+  <section class="card"><h2>${PH_POSES.find(p=>p[0]===phPose)[1]} (${list.length})</h2>
+    ${list.length?`<div class="phgrid">${thumbs}</div>`:'<p class="muted">Nenhuma foto de '+PH_POSES.find(p=>p[0]===phPose)[1].toLowerCase()+' ainda. Tire a primeira acima.</p>'}
+  </section>
+  ${del}`;
+}
+async function phAdd(file){
+  const msg=t=>{phErr=t;const m=$('#phmsg');if(m){m.textContent=t;m.hidden=!t}};
+  try{
+    const [u,t]=await Promise.all([toJpeg(file,1000).then(blobURL),toJpeg(file,320).then(blobURL)]);
+    const rec={id:uid(),d:phDate||dkey(new Date()),pose:phPose,at:Date.now(),u,t};
+    const ok=await phPut(rec);
+    phList.push(rec);
+    if(phDb&&!ok){phList.pop();return msg('Não consegui guardar a foto. O espaço do aparelho pode estar cheio.')}
+    phErr=phDb?'':phErr;phSel=[rec.id];
+    toast('Foto salva',false);
+  }catch(e){msg('Não consegui abrir essa foto. Tente outra.');return}
+  if(curTab()==='progresso'&&progView==='fotos')renderFotos();
+}
+function phClick(a,t){
+  if(a==='pview'){progView=t.dataset.v;renderProg();return true}
+  if(a==='phpose'){phPose=t.dataset.p;phSel=[];phDelId=null;renderFotos();return true}
+  if(a==='phcam'){const i=$('#phCam');if(i)i.click();return true}
+  if(a==='phlib'){const i=$('#phLib');if(i)i.click();return true}
+  if(a==='phsel'){
+    const id=t.dataset.id,i=phSel.indexOf(id);phDelId=null;
+    if(i>=0)phSel.splice(i,1);else{phSel.push(id);if(phSel.length>2)phSel.shift()}
+    renderFotos();return true;
+  }
+  if(a==='phauto'){const l=phOfPose();if(l.length>=2)phSel=[l[0].id,l[l.length-1].id];renderFotos();return true}
+  if(a==='phmode'){phMode=t.dataset.m;renderFotos();return true}
+  if(a==='phdel'){
+    if(phDelId!==t.dataset.id){phDelId=t.dataset.id;renderFotos();return true}
+    const id=phDelId;phDelId=null;
+    phRemove(id).then(()=>{phList=phList.filter(f=>f.id!==id);phSel=phSel.filter(x=>x!==id);toast('Foto excluída',false);renderFotos()});
+    return true;
+  }
+  return false;
+}
+function phChange(t,a){
+  if(a==='phdate'){if(t.value)phDate=t.value;return true}
+  if(a==='phfile'){const f=t.files&&t.files[0];t.value='';if(f)phAdd(f);return true}
+  return false;
+}
+function phSlide(t){const c=$('#cmpo');if(c)c.style.setProperty('--v',t.value+'%')}
+
 /* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
 let sampleFn=null,photo=null;
 const PHOTO_HIDE=['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','images_unavailable'];
@@ -2235,6 +2412,7 @@ document.addEventListener('click',e=>{
 
 document.addEventListener('input',e=>{
   if(e.target.id==='sq'){refreshSheet();return}
+  if(e.target.dataset&&e.target.dataset.act==='phslide'){phSlide(e.target);return}
   if(curTab()==='meta')onMetaInput(e);
   else if(curTab()==='calcular')onCalcInput(e);
 });
