@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-title" content="Meu Prato">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#FDF3F6">
+<link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon.png">
 <link rel="icon" href="icon.png">
 <title>Meu Prato</title>
@@ -306,6 +307,22 @@ body.setup .tabs{display:none}
 .sp-v{display:flex;align-items:center;gap:2px;font-weight:800}
 .sp-v input{width:52px;min-height:44px;text-align:center;border:1px solid var(--line);border-radius:12px;background:var(--surface2);color:var(--ink);font:inherit;font-weight:800}
 .sp-c .ib{min-width:44px;min-height:44px;font-size:22px;font-weight:800}
+
+
+body.touring .tabs{display:none}
+body.touring{overflow:hidden}
+.tour{position:fixed;inset:0;z-index:60;background:var(--bg);display:flex;align-items:flex-start;justify-content:center;overflow-y:auto;padding:max(16px,env(safe-area-inset-top,0px)) 16px max(16px,env(safe-area-inset-bottom,0px))}
+.tour.modal{background:rgba(0,0,0,.55);align-items:center}
+.tour-box{width:100%;max-width:520px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:22px;box-shadow:var(--shadow);margin:auto 0}
+.tour-top{display:flex;justify-content:space-between;align-items:center}
+.tour-dots{display:flex;gap:6px;margin:10px 0 14px}
+.tour-dots i{flex:1;height:5px;border-radius:3px;background:var(--surface2)}
+.tour-dots i.on{background:var(--rind)}
+.tour-ic{width:56px;height:56px;border-radius:18px;background:var(--flesh-soft);color:var(--rind);display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.tour-ic svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tour-ul{margin:12px 0 0;padding-left:20px;display:grid;gap:8px}
+.tour-ol{margin:12px 0 0;padding-left:22px;display:grid;gap:10px}
+.tour-box p{margin:8px 0 0}
 </style>
 </head><body>
 
@@ -1130,7 +1147,7 @@ async function doAuth(){
     const useLegacy=authMode==='criar'&&legacy&&$('#a-legacy')&&$('#a-legacy').checked;
     location.hash='#hoje';
     if(useLegacy){
-      S=legacy;S.profile.setup=true;S.profile.sexo=ME.sexo;viewDay=todayIdx();S.meals=S.plans[viewDay];
+      S=legacy;S.profile.setup=true;S.profile.tour=false;S.profile.sexo=ME.sexo;viewDay=todayIdx();S.meals=S.plans[viewDay];
     }
     authBusy=false;appReady();
     if(useLegacy)importLegacyPhotos().then(()=>{wipeLegacy();toast('Dados do aparelho trazidos para a sua conta',false)});
@@ -1239,7 +1256,7 @@ function renderMeta(){
   const p=S.profile,setup=p.setup===false,male=ME.sexo==='m';
   document.body.classList.toggle('setup',setup);
   $('#view').innerHTML=`
-  ${setup?`<section class="card"><h2>Bem-vindo, ${esc(ME.nome)}!</h2><p class="small muted">Antes de começar, configure o app para você. Confira seus dados abaixo: o app calcula sua meta de calorias e monta um cardápio da semana. Depois você pode trocar tudo.</p></section>`:back()}
+  ${setup?`<section class="card"><p class="small muted" style="margin:0 0 4px">Passo 1 de ${TOUR.length+1}</p><h2>Bem-vindo, ${esc(ME.nome)}! Vamos configurar o app para você</h2><p class="small muted">Preencha seu <b>perfil</b> e seus <b>dados</b>: peso, altura, idade, treino e objetivo. Com eles o app calcula sua meta diária de calorias e monta um cardápio para a semana. Você pode mudar tudo depois.</p><p class="small muted" style="margin-top:8px">Ao terminar, toque em <b>Concluir configuração</b> no fim da página. Em seguida mostro como usar o app.</p></section>`:back()}
   <section class="card">
     <h2>Seu perfil</h2>
     <div class="grid2">
@@ -1310,7 +1327,7 @@ let nameTimer=0;
 function pushProfile(){api('/api/profile',{method:'PUT',body:{nome:ME.nome,sexo:ME.sexo}}).catch(()=>{})}
 function finishSetup(){
   S.plans=buildWeek(calcMeta(S.profile).kcal);viewDay=todayIdx();S.meals=S.plans[viewDay];
-  S.profile.setup=true;document.body.classList.remove('setup');save();location.hash='#hoje';render();toast('Tudo pronto, '+ME.nome+'!',false);
+  S.profile.setup=true;S.profile.tour=false;document.body.classList.remove('setup');save();location.hash='#hoje';render();
 }
 function onMetaInput(e){
   const id=e.target.id;if(!id||id.indexOf('f-')!==0)return;
@@ -1659,6 +1676,7 @@ function renderHoje(){
   <p class="eyebrow">${esc(date)}</p>
   <h2 class="greet">${saudacao()}, ${esc(ME.nome.split(' ')[0])}!</h2>
   ${storageBanner()}
+  ${installCard()}
   ${nextMealCard(plan,lg,now)}
   <section class="card">
     ${gaugeHTML(T.k,goal.kcal,'de '+fmt(goal.kcal)+' kcal comidas')}
@@ -1822,6 +1840,8 @@ function renderMais(){
   <button class="navcard" data-tab="semana"><span><b>Resumo da semana</b><span>Médias, dias na meta e texto para enviar.</span></span>›</button>
   <button class="navcard" data-tab="backup"><span><b>Backup dos dados</b><span>Salvar e restaurar tudo.</span></span>›</button>
   <button class="navcard" data-tab="receitas"><span><b>Receitas leves</b><span>Doces e salgados com as calorias calculadas.</span></span>›</button>
+  <button class="navcard" data-act="showtour"><span><b>Como usar o app</b><span>Passo a passo rápido de cada tela.</span></span>›</button>
+  <button class="navcard" data-act="installnow"><span><b>Colocar na tela inicial</b><span>Abrir o app com um toque, como um aplicativo.</span></span>›</button>
   <button class="navcard" data-tab="conta"><span><b>Minha conta</b><span>${esc(ME.nome)} · sair, trocar senha ou excluir conta.</span></span>›</button>
   <section class="card"><h2>Salvamento</h2><p class="small ${storageNote().ok?'':'muted'}">${esc(storageNote().t)}</p></section>`;
 }
@@ -2525,6 +2545,83 @@ function smartFitReport(before,after){
   return 'Calorias '+fmt(before.k)+' → '+fmt(after.k)+' · Proteína '+fmt(before.p)+' → '+fmt(after.p)+' g · Carbo '+fmt(before.c)+' → '+fmt(after.c)+' g';
 }
 
+/* ---------- passo a passo de uso e instalação na tela inicial ---------- */
+let deferredInstall=null,tourStep=0;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;if(S&&ME&&curTab()==='hoje')renderHoje()});
+window.addEventListener('appinstalled',()=>{deferredInstall=null;if(S&&ME)toast('App instalado na tela inicial',false)});
+const isStandalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||navigator.standalone===true}catch(e){return false}};
+const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function installHow(){
+  if(isStandalone())return'<p>O app já está na sua tela inicial.</p>';
+  if(isIOS())return`<ol class="tour-ol"><li>Abra esta página no <b>Safari</b>.</li><li>Toque no botão <b>Compartilhar</b> (o quadrado com uma seta para cima, na barra de baixo).</li><li>Role a lista e toque em <b>Adicionar à Tela de Início</b>.</li><li>Toque em <b>Adicionar</b>. O ícone do Meu Prato aparece na tela inicial.</li></ol>`;
+  return`<ol class="tour-ol"><li>Toque no menu <b>⋮</b> do navegador (canto de cima).</li><li>Toque em <b>Instalar app</b> ou <b>Adicionar à tela inicial</b>.</li><li>Confirme. O ícone do Meu Prato aparece na tela inicial.</li></ol>`;
+}
+async function installNow(){
+  if(deferredInstall){
+    try{deferredInstall.prompt();const r=await deferredInstall.userChoice;deferredInstall=null;if(r&&r.outcome==='accepted')toast('Instalando o app...',false)}catch(e){}
+    return;
+  }
+  showModal('Colocar na tela inicial',installHow());
+}
+function showModal(title,html){
+  closeModal();
+  const d=document.createElement('div');d.className='tour modal';d.id='modal';d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');
+  d.innerHTML=`<div class="tour-box"><h2>${esc(title)}</h2>${html}<button class="btn block" data-act="modalx" style="margin-top:16px">Entendi</button></div>`;
+  document.body.appendChild(d);
+}
+const closeModal=()=>{const m=document.getElementById('modal');if(m)m.remove()};
+function installCard(){
+  if(isStandalone()||S.profile.installOff)return'';
+  return`<section class="card"><h2>Coloque o app na tela inicial</h2><p class="small muted">Assim você abre o Meu Prato com um toque, como um aplicativo, sem digitar o endereço.</p><div class="grid2" style="margin-top:12px"><button class="btn" data-act="installnow">${deferredInstall?'Instalar agora':'Ver como fazer'}</button><button class="btn ghost" data-act="installoff">Agora não</button></div></section>`;
+}
+const TOUR=[
+  {tab:null,t:'Tudo pronto para começar',p:'Vou mostrar em poucos passos como usar o app. Leva cerca de 1 minuto e você não vai ficar perdido.',l:['O app calculou sua meta de calorias, proteína, carboidrato e gordura.','Ele também montou um cardápio para cada dia da semana, que você pode mudar.','Seus dados ficam salvos na sua conta.']},
+  {tab:'hoje',t:'Hoje: seu dia',p:'É a tela principal. Mostra a próxima refeição e quanto falta para a meta.',l:['Toque no círculo de um alimento quando comer. As calorias do dia se atualizam.','Marque os copos de água e o treino.','Se comer algo fora do cardápio, use "Comi fora de casa". Bateu vontade de doce? Use o botão de vontade de doce.']},
+  {tab:'cardapio',t:'Cardápio: sua semana',p:'Escolha o dia no alto e ajuste o que você vai comer.',l:['Troque ou remova alimentos e mude as quantidades em gramas.','Se aumentar um alimento, o app diminui os parecidos da mesma refeição para manter as calorias.','Se o dia sair da meta, toque em "Ajustar à meta de forma inteligente".']},
+  {tab:'calcular',t:'Calcular: qualquer alimento',p:'Pesquise entre centenas de alimentos e veja as calorias pela quantidade.',l:['Digite o nome e a quantidade para ver calorias, proteína, carboidrato e gordura.','Alimento de embalagem: copie os valores do rótulo.','Alimento sem rótulo: cadastre em "Meus alimentos" e use no cardápio.']},
+  {tab:'progresso',t:'Progresso: peso, medidas e fotos',p:'Acompanhe sua evolução de verdade, sem depender só da balança.',l:['Registre peso e medidas a cada 2 semanas, não todo dia.','Na aba Fotos, tire fotos de frente, de lado e de costas, sempre com a mesma luz.','Depois compare duas fotos para ver a diferença.']},
+  {tab:'mais',t:'Mais: ajustes e extras',p:'Aqui ficam as configurações e os recursos de apoio.',l:['Meta e dados: mude peso, objetivo, treino e a porcentagem de calorias de cada refeição.','Lista de compras, receitas leves e resumo da semana.','Lembretes e som nos horários das refeições, backup e sua conta. Você pode rever este passo a passo em "Como usar o app".']},
+  {tab:null,t:'Coloque na tela inicial',p:'Para abrir o app com um toque, adicione o ícone à tela inicial do celular.',install:true}
+];
+function showTour(forced){
+  if(document.getElementById('tour'))return;
+  tourStep=0;document.body.classList.add('touring');
+  const d=document.createElement('div');d.className='tour';d.id='tour';d.dataset.forced=forced?'1':'';
+  d.setAttribute('role','dialog');d.setAttribute('aria-modal','true');d.setAttribute('aria-label','Como usar o Meu Prato');
+  document.body.appendChild(d);drawTour();
+}
+function drawTour(){
+  const d=document.getElementById('tour');if(!d)return;
+  const s=TOUR[tourStep],last=tourStep===TOUR.length-1,forced=d.dataset.forced==='1';
+  const ic=s.tab?(document.querySelector('.tab[data-tab="'+s.tab+'"] svg')||{outerHTML:''}).outerHTML:'';
+  d.innerHTML=`<div class="tour-box">
+    <div class="tour-top"><span class="small muted">Passo ${tourStep+2} de ${TOUR.length+1}</span>${forced?'':'<button class="link" data-act="tourx">Fechar</button>'}</div>
+    <div class="tour-dots" aria-hidden="true">${TOUR.map((_,i)=>`<i${i<=tourStep?' class="on"':''}></i>`).join('')}</div>
+    ${ic?`<div class="tour-ic">${ic}</div>`:''}
+    <h2>${esc(s.t)}</h2><p>${esc(s.p)}</p>
+    ${s.l?`<ul class="tour-ul">${s.l.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
+    ${s.install?(isStandalone()?'<p><b>O app já está na sua tela inicial.</b></p>':installHow()+(deferredInstall?'<button class="btn block" data-act="installnow" style="margin-top:10px">Instalar agora</button>':'')):''}
+    <div class="grid2" style="margin-top:18px">${tourStep?'<button class="btn ghost" data-act="tourprev">Voltar</button>':'<span></span>'}<button class="btn" data-act="tournext">${last?'Começar a usar':'Próximo'}</button></div>
+  </div>`;
+  const b=d.querySelector('.tour-box');if(b)b.scrollTop=0;
+}
+function endTour(){
+  const d=document.getElementById('tour'),forced=d&&d.dataset.forced==='1';
+  if(d)d.remove();document.body.classList.remove('touring');
+  if(forced||S.profile.tour===false){S.profile.tour=true;save()}
+  location.hash='#hoje';render();
+}
+function tourClick(a,t){
+  if(a==='tournext'){if(tourStep>=TOUR.length-1)endTour();else{tourStep++;drawTour()}return true}
+  if(a==='tourprev'){if(tourStep>0){tourStep--;drawTour()}return true}
+  if(a==='tourx'){endTour();return true}
+  if(a==='showtour'){showTour(false);return true}
+  if(a==='installnow'){installNow();return true}
+  if(a==='installoff'){S.profile.installOff=true;save();renderHoje();return true}
+  if(a==='modalx'){closeModal();return true}
+  return false;
+}
+
 /* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
 let sampleFn=null,photo=null;
 const PHOTO_HIDE=['not_granted','sampling_disabled','not_declared','capability_disabled','capability_removed','images_unavailable'];
@@ -2694,6 +2791,7 @@ function render(){
   let t=curTab();
   if(S.profile.setup===false&&t!=='meta'){location.hash='#meta';return}
   if(S.profile.setup!==false)document.body.classList.remove('setup');
+  if(S.profile.setup!==false&&S.profile.tour===false&&!document.getElementById('tour'))showTour(true);
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===(TABOF[t]||t)?'page':'false'));
   ({hoje:renderHoje,cardapio:renderCard,calcular:renderCalc,progresso:renderProg,mais:renderMais,meta:renderMeta,compras:renderShop,receitas:renderRec,semana:renderSemana,backup:renderBackup,lembretes:renderLembretes,conta:renderConta})[t]();
 }
@@ -2711,6 +2809,7 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   if(acctClick(a,t))return;
   if(splitClick(a,t))return;
+  if(tourClick(a,t))return;
   if(featureClick(a,t))return;
   if(a==='closesheet'){closeSheet();return}
   if(a==='cat'){
