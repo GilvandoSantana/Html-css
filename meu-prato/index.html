@@ -1348,7 +1348,7 @@ function renderCard(){
   const days=DIAS.map((d,i)=>`<button class="chip" data-act="day" data-d="${i}" aria-pressed="${i===viewDay}"${i===todayIdx()?' data-today="true"':''}>${d.slice(0,3)}</button>`).join('');
   const meta=calcMeta(S.profile),T=planTotals(S.meals);
   const pct=Math.min(100,T.k/meta.kcal*100);
-  const off=Math.abs(T.k-meta.kcal)/meta.kcal>0.08;
+  const off=dayOff(S.meals);
   const over=T.k>meta.kcal*1.02;
   const meals=S.meals.map(m=>{
     const t=sumItems(m.items);
@@ -1380,7 +1380,7 @@ function renderCard(){
       <div class="mid"><b>${fmt(T.k)}</b><div>de ${fmt(meta.kcal)} kcal</div></div>
     </div>
     <div class="bars">${bar('Proteína',T.p,meta.prot,'var(--p)')}${bar('Carboidrato',T.c,meta.carb,'var(--c)')}${bar('Gordura',T.g,meta.gord,'var(--g)')}</div>
-    ${off?`<div class="notice"><span>Este cardápio soma ${fmt(T.k)} kcal e a meta é ${fmt(meta.kcal)} kcal.</span><button class="btn" data-act="fitplan">Ajustar porções à meta</button></div>`:''}
+    ${off?`<div class="notice"><span>Este cardápio soma ${fmt(T.k)} kcal, ${fmt(T.p)} g de proteína, ${fmt(T.c)} g de carboidrato e ${fmt(T.g)} g de gordura. A meta é ${fmt(meta.kcal)} kcal, ${meta.prot} g, ${meta.carb} g e ${meta.gord} g.</span><button class="btn" data-act="fitplan">Ajustar à meta de forma inteligente</button></div>`:''}
   </section>
   ${meals}
   <button class="btn ghost block" data-act="addmeal">Adicionar refeição</button>
@@ -1392,10 +1392,9 @@ function findItem(el){
   return{m,it:m&&m.items.find(x=>x.id===li.dataset.i)};
 }
 function fitPlan(){
-  const meta=calcMeta(S.profile),T=planTotals(S.meals);
-  if(!T.k)return;
-  snapshot();scalePlan(S.meals,meta.kcal/T.k);save();
-  toast('Porções ajustadas para '+fmt(meta.kcal)+' kcal',true);render();
+  if(!planTotals(S.meals).k)return;
+  const b=planTotals(S.meals);snapshot();smartFit(S.meals);save();
+  toast(smartFitReport(b,planTotals(S.meals)),true);render();
 }
 
 /* ---------- escolher alimento (adicionar e trocar) ---------- */
@@ -1890,8 +1889,8 @@ function featureClick(a,t){
   if(a==='fitall'){
     snapshot();const meta=calcMeta(S.profile);
     S.plans[viewDay]=S.meals;
-    S.plans.forEach(p=>{const k=planTotals(p).k;if(k)scalePlan(p,meta.kcal/k)});
-    S.meals=S.plans[viewDay];save();toast('Semana ajustada para '+fmt(meta.kcal)+' kcal por dia',true);go('cardapio');return true;
+    S.plans.forEach(p=>{if(planTotals(p).k)smartFit(p)});
+    S.meals=S.plans[viewDay];save();toast('Semana ajustada: '+fmt(meta.kcal)+' kcal, '+meta.prot+' g de proteína por dia',true);go('cardapio');return true;
   }
   if(a==='eat'){const lg=logOf(key),id=t.dataset.ii;if(lg.eaten[id])delete lg.eaten[id];else{const it=planOf(todayIdx()).flatMap(m=>m.items).find(i=>i.id===id);if(it)lg.eaten[id]={f:it.f,g:it.g}}save();renderHoje();return true}
   if(a==='eatmeal'){
@@ -2486,6 +2485,44 @@ function compensate(m,it,before){
   });
   others.forEach(x=>{delete x._o});
   return others.filter(x=>x.g!==snap.get(x.id)).map(x=>(food(x.f)||{}).n).filter(Boolean);
+}
+
+/* ---------- ajuste inteligente: calorias, proteína, carboidrato e gordura ao mesmo tempo ---------- */
+function macroTargets(){const m=calcMeta(S.profile);return{k:m.kcal,p:m.prot,c:m.carb,g:m.gord}}
+function dayOff(meals){
+  const T=planTotals(meals),t=macroTargets();
+  return Math.abs(T.k-t.k)/t.k>0.05||T.p<t.p*0.9||T.p>t.p*1.2||Math.abs(T.c-t.c)/t.c>0.12||Math.abs(T.g-t.g)/t.g>0.15;
+}
+function smartFit(meals){
+  const t=macroTargets(),its=[];
+  meals.forEach((m,mi)=>m.items.forEach(it=>{const f=food(it.f);if(f)its.push({it,mi,f,g0:it.g,x:1,m:mac(f,it.g),step:stepOf(f)})}));
+  if(!its.length)return;
+  const pc=curPcts(meals),mt=meals.map((_,i)=>t.k*pc[i]/100);
+  // termos: [peso, alvo, função que extrai do vetor item]
+  const terms=[
+    {w:3,t:t.p,g:m=>m.p,sel:()=>true},
+    {w:1.5,t:t.c,g:m=>m.c,sel:()=>true},
+    {w:1.5,t:t.g,g:m=>m.g,sel:()=>true},
+    {w:2,t:t.k,g:m=>m.k,sel:()=>true},
+    ...meals.map((_,i)=>({w:0.6,t:mt[i],g:m=>m.k,sel:x=>x.mi===i}))
+  ];
+  const R=terms.map(tm=>its.filter(tm.sel).reduce((a,x)=>a+tm.g(x.m)*x.x,0)-tm.t);
+  for(let iter=0;iter<60;iter++){
+    its.forEach(x=>{
+      let num=0,den=0;
+      terms.forEach((tm,j)=>{if(!tm.sel(x))return;const a=tm.g(x.m),sc=tm.w/(tm.t*tm.t||1);num+=sc*a*R[j];den+=sc*a*a});
+      let d=den?-num/den:0;
+      const lo=x.f.c==='gord'?0.5:0.55,hi=x.f.c==='veg'?1.8:(x.f.c==='prot'||x.f.c==='lac'?1.6:1.45);
+      const nx=Math.max(lo,Math.min(hi,x.x+d));d=nx-x.x;
+      if(d){terms.forEach((tm,j)=>{if(tm.sel(x))R[j]+=tm.g(x.m)*d});x.x=nx}
+    });
+  }
+  its.forEach(x=>{
+    const g=Math.max(x.step,Math.round(x.g0*x.x/x.step)*x.step);x.it.g=Math.round(g*10)/10;
+  });
+}
+function smartFitReport(before,after){
+  return 'Calorias '+fmt(before.k)+' → '+fmt(after.k)+' · Proteína '+fmt(before.p)+' → '+fmt(after.p)+' g · Carbo '+fmt(before.c)+' → '+fmt(after.c)+' g';
 }
 
 /* ---------- foto da refeição (usa o Claude da pessoa que abre o app) ---------- */
