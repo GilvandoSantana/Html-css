@@ -1401,7 +1401,8 @@ function renderCard(){
   </section>
   ${meals}
   <button class="btn ghost block" data-act="addmeal">Adicionar refeição</button>
-  <p style="text-align:center;margin-top:10px"><button class="link" data-act="resetplan">Restaurar cardápio sugerido</button></p>`;
+  <p style="text-align:center;margin-top:10px"><button class="link" data-act="resetplan">Restaurar cardápio sugerido deste dia</button></p>
+  <p style="text-align:center"><button class="link danger" data-act="resetweek">${weekArm?'Toque de novo para restaurar a semana toda':'Restaurar o cardápio sugerido da semana toda'}</button></p>`;
 }
 function findItem(el){
   const li=el.closest('[data-i]');if(!li)return{};
@@ -2440,7 +2441,7 @@ function setMealPct(idx,val){
   for(let i=0;d!==0&&i<n*4;i++){const j=i%n;if(j===idx)continue;if(d>0){out[j]++;d--}else if(out[j]>5){out[j]--;d++}}
   applySplit(meals,out);
 }
-let splitDay=null;
+let splitDay=null,weekArm=false;
 function renderSplit(){
   const box=$('#splitBox');if(!box)return;
   const meals=S.meals,p=curPcts(meals),kcal=calcMeta(S.profile).kcal;
@@ -2452,7 +2453,7 @@ function renderSplit(){
       <span class="sp-c"><button class="ib" data-act="pct-" data-i="${i}" aria-label="Diminuir ${esc(m.nome)}">−</button><label class="sp-v"><input data-act="pctin" data-i="${i}" inputmode="numeric" value="${p[i]}" aria-label="Porcentagem de ${esc(m.nome)}">%</label><button class="ib" data-act="pct+" data-i="${i}" aria-label="Aumentar ${esc(m.nome)}">+</button></span></li>`).join('')}</ul>
     <p class="small" style="margin-top:8px"><b>Total: 100%</b> · ${fmt(kcal)} kcal</p>
     <div class="grid2" style="margin-top:10px"><button class="btn ghost" data-act="pequal">Dividir igualmente</button><button class="btn ghost" data-act="pall">Usar em todos os dias</button></div>
-    <label class="remck" style="margin-top:12px"><input type="checkbox" data-act="autobal"${S.profile.autoBal===false?'':' checked'}><span>Ajustar os outros alimentos da refeição sozinho quando eu mudar uma quantidade</span></label>
+    <label class="remck" style="margin-top:12px"><input type="checkbox" data-act="autobal"${S.profile.autoBal===true?' checked':''}><span>Ao mudar a quantidade de um alimento, ajustar só alimentos parecidos da mesma refeição (desligado por padrão)</span></label>
   </section>`;
 }
 function splitClick(a,t){
@@ -2499,7 +2500,7 @@ function compensate(m,it,before){
   others.forEach(x=>{x._o=x.g});
   let diff=before-sumItems(m.items).k;
   const g0=GRP[f0.c]||'o';
-  [[others.filter(x=>(food(x.f)||{}).c===f0.c),0.3],[others.filter(x=>GRP[(food(x.f)||{}).c]===g0),0.4],[others.filter(x=>!['veg','gord'].includes((food(x.f)||{}).c)),0.7]].forEach(([set,lo])=>{
+  [[others.filter(x=>(food(x.f)||{}).c===f0.c),0.75],[others.filter(x=>GRP[(food(x.f)||{}).c]===g0&&g0!=='p'&&g0!=='o'),0.8]].forEach(([set,lo])=>{
     if(Math.abs(diff)<8||!set.length)return;
     shiftKcal(set,diff,lo);diff=before-sumItems(m.items).k;
   });
@@ -2841,6 +2842,10 @@ document.addEventListener('click',e=>{
     snapshot();S.meals.push({id:uid(),nome:'Nova refeição',hora:'15:00',items:[]});save();render();
     toast('Refeição adicionada',true);return;
   }
+  if(a==='resetweek'){
+    if(!weekArm){weekArm=true;renderCard();return}
+    weekArm=false;snapshot();S.plans=buildWeek(calcMeta(S.profile).kcal);S.meals=S.plans[viewDay];save();render();toast('Cardápio da semana restaurado',true);return;
+  }
   if(a==='resetplan'){
     snapshot();S.meals=buildPlan(calcMeta(S.profile).kcal);save();render();toast('Cardápio sugerido restaurado',true);return;
   }
@@ -2876,7 +2881,7 @@ document.addEventListener('change',e=>{
     if(it&&n>0&&n<=3000){
       snapshot();const before=sumItems(mm.items).k;
       it.g=Math.round(n*10)/10;
-      if(S.profile.autoBal!==false&&mm.items.length>1)moved=compensate(mm,it,before);
+      if(S.profile.autoBal===true&&mm.items.length>1)moved=compensate(mm,it,before);
       save();
       if(moved.length){render();toast('Ajustei '+moved.slice(0,3).join(', ')+'. A refeição ficou com '+fmt(sumItems(mm.items).k)+' kcal (antes '+fmt(before)+')',true);return}
     }

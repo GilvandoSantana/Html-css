@@ -128,6 +128,16 @@ async function handle(req, env) {
   if (m && method === "PUT") {
     const b = await body();
     if (typeof b.json !== "string" || b.json.length > 900000) return err(req, env, 400, "Dados inválidos.");
+    if (m[1] === "core") {
+      const last = (await q(`SELECT t FROM doc_hist WHERE uid=$1 AND name=$2 ORDER BY t DESC LIMIT 1`, [uid, "core"]))[0];
+      if (!last || Date.now() - Number(last.t) > 3 * 3600000) {
+        const cur = (await q(`SELECT json FROM docs WHERE uid=$1 AND name=$2`, [uid, "core"]))[0];
+        if (cur) {
+          await q(`INSERT INTO doc_hist(uid, name, json, t) VALUES($1,$2,$3,$4)`, [uid, "core", cur.json, Date.now()]);
+          await q(`DELETE FROM doc_hist WHERE uid=$1 AND name=$2 AND t NOT IN (SELECT t FROM doc_hist WHERE uid=$1 AND name=$2 ORDER BY t DESC LIMIT 40)`, [uid, "core"]);
+        }
+      }
+    }
     await q(`INSERT INTO docs(uid, name, json, t) VALUES($1,$2,$3,$4) ON CONFLICT(uid, name) DO UPDATE SET json=excluded.json, t=excluded.t`, [uid, m[1], b.json, Date.now()]);
     return json(req, env, { ok: true });
   }
