@@ -1388,6 +1388,7 @@ function renderCard(){
   }).join('');
   $('#view').innerHTML=`
   <div class="chips" aria-label="Dia da semana">${days}</div>
+  <section class="card" style="padding:12px 16px"><p class="small muted" style="margin:0">Cada dia da semana tem o <b>seu próprio cardápio</b>. Você está editando <b>${DIAS[viewDay]}</b>. Para ter o mesmo cardápio nos outros dias:</p><button class="btn ghost block" data-act="copyall" style="margin-top:10px">Copiar ${DIAS[viewDay]} para todos os dias</button></section>
   <section class="card">
     <div class="gauge">
       <svg viewBox="0 0 200 112" role="img" aria-label="${fmt(T.k)} de ${fmt(meta.kcal)} calorias">
@@ -2841,6 +2842,11 @@ document.addEventListener('click',e=>{
   if(a==='addmeal'){
     snapshot();S.meals.push({id:uid(),nome:'Nova refeição',hora:'15:00',items:[]});save();render();
     toast('Refeição adicionada',true);return;
+  }
+  if(a==='copyall'){
+    S.plans[viewDay]=S.meals;snapshot();
+    S.plans=S.plans.map((pl,d)=>d===viewDay?pl:S.meals.map(m=>({id:uid(),nome:m.nome,hora:m.hora,items:m.items.map(i=>({id:uid(),f:i.f,g:i.g}))})));
+    S.meals=S.plans[viewDay];save();toast('Cardápio de '+DIAS[viewDay]+' copiado para todos os dias',true);return;
   }
   if(a==='resetweek'){
     if(!weekArm){weekArm=true;renderCard();return}
