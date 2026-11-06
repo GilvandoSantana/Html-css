@@ -36,6 +36,13 @@ const json = (req, env, data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { "content-type": "application/json", "cache-control": "no-store", ...cors(req, env) } });
 const err = (req, env, status, msg) => json(req, env, { erro: msg }, status);
 
+const ALPHA = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+function newRecovery() {
+  const b = crypto.getRandomValues(new Uint8Array(12));
+  const s = [...b].map((x) => ALPHA[x % 32]).join("");
+  return `${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8, 12)}`;
+}
+const normRec = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 const USER_RE = /^[a-z0-9_.-]{3,30}$/;
 
 export default {
@@ -60,7 +67,7 @@ async function handle(req, env) {
     await q(`INSERT INTO sessions(th, uid, created) VALUES($1,$2,$3)`, [await sha(t), uid, Date.now()]);
     return t;
   };
-  const pub = (u) => ({ username: u.username, nome: u.nome, sexo: u.sexo });
+  const pub = (u) => ({ username: u.username, nome: u.nome, sexo: u.sexo, hasRec: !!u.rec });
 
   if (p === "/api/register" && method === "POST") {
     const b = await body();
@@ -73,8 +80,9 @@ async function handle(req, env) {
     failed("r" + ip);
     if ((await q(`SELECT 1 FROM users WHERE username=$1`, [username])).length) return err(req, env, 409, "Esse usuário já existe. Escolha outro.");
     const h = await hashPass(pass, env);
-    const rows = await q(`INSERT INTO users(username, pass, nome, sexo, created) VALUES($1,$2,$3,$4,$5) RETURNING id`, [username, h, nome, sexo, Date.now()]);
-    return json(req, env, { token: await newSession(Number(rows[0].id)), user: { username, nome, sexo } });
+    const rec = newRecovery();
+    const rows = await q(`INSERT INTO users(username, pass, nome, sexo, created, rec) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`, [username, h, nome, sexo, Date.now(), await sha(normRec(rec))]);
+    return json(req, env, { token: await newSession(Number(rows[0].id)), user: { username, nome, sexo, hasRec: true }, recovery: rec });
   }
   if (p === "/api/login" && method === "POST") {
     const b = await body(), username = String(b.username || "").toLowerCase().trim(), k = "l" + ip + username;
@@ -85,10 +93,24 @@ async function handle(req, env) {
     return json(req, env, { token: await newSession(Number(u.id)), user: pub(u) });
   }
 
+  if (p === "/api/reset" && method === "POST") {
+    const b = await body(), username = String(b.username || "").toLowerCase().trim(), k = "x" + ip + username, np = String(b.new || "");
+    if (limited(k)) return err(req, env, 429, "Muitas tentativas. Tente em alguns minutos.");
+    if (np.length < 6 || np.length > 100) return err(req, env, 400, "A nova senha precisa ter de 6 a 100 caracteres.");
+    const u = (await q(`SELECT * FROM users WHERE username=$1`, [username]))[0];
+    const code = normRec(b.code);
+    if (!u || !u.rec || code.length !== 12 || (await sha(code)) !== u.rec) { failed(k); return err(req, env, 401, "Usuário ou código de recuperação incorretos."); }
+    fails.delete(k);
+    const rec = newRecovery();
+    await q(`UPDATE users SET pass=$1, rec=$2 WHERE id=$3`, [await hashPass(np, env), await sha(normRec(rec)), Number(u.id)]);
+    await q(`DELETE FROM sessions WHERE uid=$1`, [Number(u.id)]);
+    return json(req, env, { token: await newSession(Number(u.id)), user: pub({ ...u, rec: "x" }), recovery: rec });
+  }
+
   const m0 = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.get("authorization") || "");
   let me = null;
   if (m0) {
-    const r = (await q(`SELECT u.id, u.username, u.nome, u.sexo, s.created FROM sessions s JOIN users u ON u.id = s.uid WHERE s.th = $1`, [await sha(m0[1])]))[0];
+    const r = (await q(`SELECT u.id, u.username, u.nome, u.sexo, u.rec, s.created FROM sessions s JOIN users u ON u.id = s.uid WHERE s.th = $1`, [await sha(m0[1])]))[0];
     if (r && Date.now() - Number(r.created) <= 180 * 86400000) me = r;
   }
   if (!me) return err(req, env, 401, "Sessão expirada. Entre de novo.");
@@ -107,7 +129,7 @@ async function handle(req, env) {
     const b = await body(), nome = String(b.nome || "").trim().slice(0, 40), sexo = b.sexo;
     if (!nome || (sexo !== "f" && sexo !== "m")) return err(req, env, 400, "Dados inválidos.");
     await q(`UPDATE users SET nome=$1, sexo=$2 WHERE id=$3`, [nome, sexo, uid]);
-    return json(req, env, { user: { username: me.username, nome, sexo } });
+    return json(req, env, { user: { username: me.username, nome, sexo, hasRec: !!me.rec } });
   }
   if (p === "/api/password" && method === "POST") {
     const b = await body(), u = (await q(`SELECT pass FROM users WHERE id=$1`, [uid]))[0];
@@ -116,6 +138,13 @@ async function handle(req, env) {
     if (np.length < 6 || np.length > 100) return err(req, env, 400, "A nova senha precisa ter de 6 a 100 caracteres.");
     await q(`UPDATE users SET pass=$1 WHERE id=$2`, [await hashPass(np, env), uid]);
     return json(req, env, { ok: true });
+  }
+  if (p === "/api/recovery/new" && method === "POST") {
+    const b = await body(), u = (await q(`SELECT pass FROM users WHERE id=$1`, [uid]))[0];
+    if (!(await verifyPass(String(b.pass || ""), u.pass))) return err(req, env, 401, "Senha incorreta.");
+    const rec = newRecovery();
+    await q(`UPDATE users SET rec=$1 WHERE id=$2`, [await sha(normRec(rec)), uid]);
+    return json(req, env, { recovery: rec });
   }
   if (p === "/api/account" && method === "DELETE") {
     const b = await body(), u = (await q(`SELECT pass FROM users WHERE id=$1`, [uid]))[0];
